@@ -10,16 +10,14 @@ python split_names_combine.py ec_file.txt pt_file.txt
 import os
 import sys
 import csv
-import bisect
-from collections import defaultdict
-from sets import Set
+#from collections import set as Set
 
 ec_fn = sys.argv[1]
 pt_fn = sys.argv[2]
 
-print >> sys.stderr, "Running with following arguments:"
-print >> sys.stderr, "\tec_fn = ", ec_fn
-print >> sys.stderr, "\tpt_fn = ", pt_fn
+print( "Running with following arguments:", file=sys.stderr)
+print( "\tec_fn = ", ec_fn, file=sys.stderr)
+print( "\tpt_fn = ", pt_fn, file=sys.stderr)
 
 # read in the emergency contact data
 delim = '\t' if ec_fn.endswith('txt') else ','
@@ -67,10 +65,10 @@ if not h == exp_header:
     raise Exception("Patient demographic data file (%s) doesn't have the header expected:%s" % (pt_fn, exp_header))
 
 current_mrn = None
-current_fn = Set()
-current_ln = Set()
-current_phone = Set()
-current_zip = Set()
+current_fn = set()
+current_ln = set()
+current_phone = set()
+current_zip = set()
 
 #write processed pt_data
 pt_ofn = os.path.dirname(pt_fn) + '/pt_processed.csv'
@@ -81,11 +79,11 @@ writer.writerow(['MRN', 'FirstName', 'LastName', 'PhoneNumber', 'Zipcode'])
 
 for mrn, fn, ln, phone, zipcode in reader:
     if mrn != current_mrn and current_mrn is not None:
-	for fn_comp in current_fn:
+        for fn_comp in current_fn:
             for ln_comp in current_ln:
-		for ph_comp in current_phone:
-		    for zip_comp in current_zip:
-			writer.writerow([current_mrn, fn_comp, ln_comp, ph_comp, zip_comp])
+                for ph_comp in current_phone:
+                    for zip_comp in current_zip:
+                        writer.writerow([current_mrn, fn_comp, ln_comp, ph_comp, zip_comp])
 	current_fn.clear()
 	current_ln.clear()
 	current_phone.clear()

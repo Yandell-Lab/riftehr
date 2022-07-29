@@ -19,16 +19,16 @@ ec_fn = sys.argv[1]
 pt_fn = sys.argv[2]
 ma_fn = sys.argv[3]
 
-print >> sys.stderr, "Running find_matches.py with following arguments:"
-print >> sys.stderr, "\tec_fn = ", ec_fn
-print >> sys.stderr, "\tpt_fn = ", pt_fn
-print >> sys.stderr, "\tma_fn = ", ma_fn
+print( "Running find_matches.py with following arguments:", file=sys.stderr)
+print( "\tec_fn = ", ec_fn, file=sys.stderr)
+print( "\tpt_fn = ", pt_fn, file=sys.stderr)
+print( "\tma_fn = ", ma_fn, file=sys.stderr)
 
 start = 0
 end = None
 if len(sys.argv) == 5:
     start, end = map(int, sys.argv[4].split(':'))
-    print >> sys.stderr, "\toperating on subset: %d - %d" % (start, end)
+    print( "\toperating on subset: %d - %d" % (start, end), file=sys.stderr)
 
 # read in the emergency contact data
 delim = '\t' if ec_fn.endswith('txt') else ','
@@ -67,7 +67,8 @@ try:
     for i, (mrn, fn, ln, phone, zipcode) in enumerate(reader):
         fn = fn.strip().lower()
         ln = ln.strip().lower()
-    
+
+# This splitting does not deal with any input name containing a space or any other delimiter.
         first_names = [fn]
         if fn.replace('-', ' ').find(' ') != -1:
             first_names += fn.replace('-',' ').split(' ')
@@ -75,28 +76,29 @@ try:
         last_names = [ln]
         if ln.replace('-', ' ').find(' ') != -1:
             last_names += ln.replace('-',' ').split(' ')
-    
+
+# Potentially multiple data records per input
         for fn_comp in first_names:
             for ln_comp in last_names:
                 pt_data.append([mrn, fn_comp, ln_comp, phone, zipcode])
 except Exception as e:
-    #print >> sys.stderr, "Failed with error: %s" % csv.Error
-    print >> sys.stderr, "Failed in %s at line: %d with error: %s" % (pt_fn, i+2, e)
+    #print( "Failed with error: %s" % csv.Error), (file=sys.stderr)
+    print( "Failed in %s at line: %d with error: %s" % (pt_fn, i+2, e), file=sys.stderr)
     sys.exit(20)
     
 
-print >> sys.stderr, "Parsed %d entries for EC and %d entries for PT" % (len(ec_data), len(pt_data))
+print( "Parsed %d entries for EC and %d entries for PT" % (len(ec_data), len(pt_data)), file=sys.stderr)
 
 # Using hashing to reduce the search space heuristically
-print >> sys.stderr, "Building hash libraries..."
+print( "Building hash libraries...", file=sys.stderr)
 
-first_hash = defaultdict(list)
+first_hash = defaultdict( list )
 last_hash = defaultdict(list)
 phone_hash = defaultdict(list)
 zip_hash = defaultdict(list)
 
 num_char = 13
-print >> sys.stderr, "\thashing num = %d" % num_char
+print( "\thashing num = %d" % num_char, file=sys.stderr)
 
 # now we build the hashes, but we skip any blank entries
 for pt in pt_data:
@@ -110,10 +112,10 @@ for pt in pt_data:
     if zipcode[:num_char] != '':
         zip_hash[zipcode[:num_char]].append( pt )
 
-print >> sys.stderr, "\tfirst name hash has %d keys with an average of %.2f patients." % (len(first_hash), sum([len(v) for v in first_hash.values()])/float(len(first_hash)))
-print >> sys.stderr, "\tlast name hash has %d keys with an average of %.2f patients." % (len(last_hash), sum([len(v) for v in last_hash.values()])/float(len(last_hash)))
-print >> sys.stderr, "\tphone hash has %d keys with an average of %.2f patients." % (len(phone_hash), sum([len(v) for v in phone_hash.values()])/float(len(phone_hash)))
-print >> sys.stderr, "\tzipcode hash has %d keys with an average of %.2f patients." % (len(zip_hash), sum([len(v) for v in zip_hash.values()])/float(len(zip_hash)))
+print( "\tfirst name hash has %d keys with an average of %.2f patients." % (len(first_hash), sum([len(v) for v in first_hash.values()])/float(len(first_hash))), file=sys.stderr)
+print( "\tlast name hash has %d keys with an average of %.2f patients." % (len(last_hash), sum([len(v) for v in last_hash.values()])/float(len(last_hash))), file=sys.stderr)
+print( "\tphone hash has %d keys with an average of %.2f patients." % (len(phone_hash), sum([len(v) for v in phone_hash.values()])/float(len(phone_hash))), file=sys.stderr)
+print( "\tzipcode hash has %d keys with an average of %.2f patients." % (len(zip_hash), sum([len(v) for v in zip_hash.values()])/float(len(zip_hash))), file=sys.stderr)
 
 # lets start with a brute force implementation
 if end is None:
@@ -136,7 +138,8 @@ for pt_mrn, ec_first, ec_last, ec_phone, ec_zip, relationship in tqdm(ec_data_su
     #last_matches = set([pt[0] for pt in pt_data if pt[2] == ec_last])
     #phone_matches = set([pt[0] for pt in pt_data if pt[3] == ec_phone])
     #zip_matches = set([pt[0] for pt in pt_data if pt[4] == ec_zip])
-    
+
+
     # hashing approach
     first_matches = set([pt[0] for pt in first_hash[ec_first[:num_char]] if pt[1] == ec_first])
     last_matches = set([pt[0] for pt in last_hash[ec_last[:num_char]] if pt[2] == ec_last])
@@ -177,7 +180,6 @@ for pt_mrn, ec_first, ec_last, ec_phone, ec_zip, relationship in tqdm(ec_data_su
         matching_mrns.extend([(mrn, 'first,last,zip') for mrn in (first_matches & last_matches & zip_matches)])
     if len(first_matches & phone_matches & zip_matches) == 1:
         matching_mrns.extend([(mrn, 'first,phone,zip') for mrn in (first_matches & phone_matches & zip_matches)])
-    
     if len(last_matches & phone_matches & zip_matches) == 1:
         matching_mrns.extend([(mrn, 'last,phone,zip') for mrn in (last_matches & phone_matches & zip_matches)])
     
@@ -189,9 +191,9 @@ for pt_mrn, ec_first, ec_last, ec_phone, ec_zip, relationship in tqdm(ec_data_su
         #relationship_results.append([pt_mrn, relationship, matched_mrn, path])
         writer.writerow([pt_mrn, relationship, matched_mrn, path])
 
-# print >> sys.stderr, "Found %d EC -> PT matches, saving to file." % len(relationship_results)
+# print( "Found %d EC -> PT matches, saving to file." % len(relationship_results), file=sys.stderr)
 
-#writer.writerows(relationship_results)
+#wrifn[:13]ter.writerows(relationship_results)
 ofh.close()
 
 

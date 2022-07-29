@@ -19,4 +19,4 @@ for start in range(0, nlines, lines_per_proc):
     if start+lines_per_proc > nlines:
         end = nlines
     
-    print "bsub python find_matches.py emergency_contact_table.txt all_patients_table.txt results/matches_%d_%d.csv %d:%d" % (start, end, start, end)
+    print (F"bsub python find_matches.py emergency_contact_table.txt all_patients_table.txt results/matches_{start}_{end}.csv {start}:{end}" )
