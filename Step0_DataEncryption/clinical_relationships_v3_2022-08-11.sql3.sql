@@ -444,7 +444,7 @@ CREATE TABLE ec_clean (
   MRN_1 varchar(20) DEFAULT NULL,
   EC_FirstName varchar(255) DEFAULT NULL,
   EC_LastName varchar(255) DEFAULT NULL,
-  EC_PhoneNumber varchar(15) DEFAULT NULL,
+  EC_PhoneNumber varchar(20) DEFAULT NULL,
   EC_Zipcode varchar(20) DEFAULT NULL,
   EC_Relationship varchar(255) DEFAULT NULL
 ); 
@@ -460,7 +460,7 @@ CREATE TABLE ec_exclude (
   MRN varchar(20) DEFAULT NULL,
   FirstName varchar(255) DEFAULT NULL,
   LastName varchar(255) DEFAULT NULL,
-  PhoneNumber varchar(12) DEFAULT NULL,
+  PhoneNumber varchar(20) DEFAULT NULL,
   Zipcode varchar(20) DEFAULT NULL
 ); 
 
@@ -662,7 +662,7 @@ CREATE TABLE x_ec_processed (
   MRN_1 varchar(20) DEFAULT NULL,
   EC_FirstName varchar(255) DEFAULT NULL,
   EC_LastName varchar(255) DEFAULT NULL,
-  EC_PhoneNumber varchar(15) DEFAULT NULL,
+  EC_PhoneNumber varchar(20) DEFAULT NULL,
   EC_Zipcode varchar(20) DEFAULT NULL,
   EC_Relationship varchar(255) DEFAULT NULL
 ); 
@@ -844,7 +844,7 @@ CREATE TABLE x_pt_processed (
   MRN varchar(20) DEFAULT NULL,
   FirstName varchar(255) DEFAULT NULL,
   LastName varchar(255) DEFAULT NULL,
-  PhoneNumber varchar(12) DEFAULT NULL,
+  PhoneNumber varchar(20) DEFAULT NULL,
   Zipcode varchar(20) DEFAULT NULL,
   unique(MRN)
 ); 
