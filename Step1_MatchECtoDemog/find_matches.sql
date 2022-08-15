@@ -94,7 +94,7 @@ where b.cnt = 1 ;
 create unique index on cell.x_zip_unique(Zipcode);
 
 insert into cell.x_cumc_patient_matched
-select distinct a.MRN_1 as empi_or_mrn, a.EC_Relationship as relationship, b.MRN as relation_empi_or_mrn, 'zipo'::text as matched_path
+select distinct a.MRN_1 as empi_or_mrn, a.EC_Relationship as relationship, b.MRN as relation_empi_or_mrn, 'zip'::text as matched_path
 from cell.x_ec_processed a
 join cell.x_zip_unique b on a.EC_Zipcode = b.Zipcode;
 
