@@ -11,9 +11,38 @@ import os
 import sys
 import csv
 import bisect
+import pdb
 
-from tqdm import tqdm
+# from tqdm import tqdm
 from collections import defaultdict
+
+def fileSniff(datafn, headings):
+    check_header_file = open(datafn, 'r')
+    line1 = check_header_file.readline()
+    has_header = csv.Sniffer().has_header(line1)
+    dial = csv.Sniffer().sniff(line1, ',\t|')
+    if not has_header:
+        print(F" We do not see any headers\n")
+        sys.exit(2)
+    else:
+        fhead=line1.strip().split(dial.delimiter)
+        if not compareHeadings(headings, fhead):
+            print(F"headings disagree:\nexpect:{headings}\ngot:{fhead}")
+            sys.exit(2)
+        return csv.reader(check_header_file,delimiter=dial.delimiter)
+            
+
+def compareHeadings(expected, actual):
+    dcexp = downcaseArray(expected)
+    dcact = downcaseArray(actual)
+    return dcexp == dcact
+
+def downcaseArray(mixed):
+    rv = []
+    for e in mixed:
+        rv.append(e.lower())
+    return rv
+        
 
 ec_fn = sys.argv[1]
 pt_fn = sys.argv[2]
@@ -30,13 +59,17 @@ if len(sys.argv) == 5:
     start, end = map(int, sys.argv[4].split(':'))
     print( "\toperating on subset: %d - %d" % (start, end), file=sys.stderr)
 
-# read in the emergency contact data
-delim = '\t' if ec_fn.endswith('txt') else ','
-reader = csv.reader(open(ec_fn, 'rU'), delimiter=delim)
-h = reader.next()
+# # read in the emergency contact data
+# delim = '|' if ec_fn.endswith('txt') else ','
+# reader = csv.reader(open(ec_fn, 'rU'), delimiter=delim)
+# h = reader.next()
+# exp_header = ['MRN_1', 'EC_FirstName', 'EC_LastName', 'EC_PhoneNumber', 'EC_Zipcode', 'EC_Relationship']
+# if not h == exp_header:
+#     raise Exception("Emergency contact data file (%s) doesn't have the header expected: %s" % (ec_fn, exp_header))
+
 exp_header = ['MRN_1', 'EC_FirstName', 'EC_LastName', 'EC_PhoneNumber', 'EC_Zipcode', 'EC_Relationship']
-if not h == exp_header:
-    raise Exception("Emergency contact data file (%s) doesn't have the header expected: %s" % (ec_fn, exp_header))
+reader = fileSniff(ec_fn, exp_header)
+
 
 ec_data = list()
 for mrn, fn, ln, phone, zipcode, rel in reader:
@@ -55,13 +88,17 @@ for mrn, fn, ln, phone, zipcode, rel in reader:
         for ln_comp in last_names:
             ec_data.append([mrn, fn_comp, ln_comp, phone, zipcode, rel])
 
-# read in the patient demographics data
-delim = '\t' if pt_fn.endswith('txt') else ','
-reader = csv.reader(open(pt_fn, 'rU'), delimiter=delim)
-h = reader.next()
+# # read in the patient demographics data
+# delim = '\t' if pt_fn.endswith('txt') else ','
+# reader = csv.reader(open(pt_fn, 'rU'), delimiter=delim)
+# h = reader.next()
+# exp_header = ['MRN', 'FirstName', 'LastName', 'PhoneNumber', 'Zipcode']
+# if not h == exp_header:
+#     raise Exception("Patient demographic data file (%s) doesn't have the header expected:%s" % (pt_fn, exp_header))
+
 exp_header = ['MRN', 'FirstName', 'LastName', 'PhoneNumber', 'Zipcode']
-if not h == exp_header:
-    raise Exception("Patient demographic data file (%s) doesn't have the header expected:%s" % (pt_fn, exp_header))
+reader = fileSniff(pt_fn, exp_header)
+
 pt_data = list()
 try:
     for i, (mrn, fn, ln, phone, zipcode) in enumerate(reader):
@@ -98,7 +135,7 @@ phone_hash = defaultdict(list)
 zip_hash = defaultdict(list)
 
 num_char = 13
-print( "\thashing num = %d" % num_char, file=sys.stderr)
+print( F"\thashing num = {num_char}", file=sys.stderr)
 
 # now we build the hashes, but we skip any blank entries
 for pt in pt_data:
@@ -130,7 +167,7 @@ delim = '\t' if ma_fn.endswith('txt') else ','
 writer = csv.writer(ofh, delimiter=delim)
 #writer.writerow(['patient_mrn', 'relationship', 'matched_relation_mrn', 'matched_path'])
 
-for pt_mrn, ec_first, ec_last, ec_phone, ec_zip, relationship in tqdm(ec_data_subet):
+for pt_mrn, ec_first, ec_last, ec_phone, ec_zip, relationship in ec_data_subet:
     
     # we match on each of the four datatypes: first name, last name, phone number, and zipcode
     # brute force approach
@@ -141,10 +178,12 @@ for pt_mrn, ec_first, ec_last, ec_phone, ec_zip, relationship in tqdm(ec_data_su
 
 
     # hashing approach
+    ## something like: "for each full patient info attainable from hash of ec_firstname add mrn of each patient if pt_first matches ec_first"
+    ## so the hashing has multiple copies (4?) (pointers?) of any patient
     first_matches = set([pt[0] for pt in first_hash[ec_first[:num_char]] if pt[1] == ec_first])
-    last_matches = set([pt[0] for pt in last_hash[ec_last[:num_char]] if pt[2] == ec_last])
+    last_matches  = set([pt[0] for pt in last_hash[ec_last[:num_char]]   if pt[2] == ec_last])
     phone_matches = set([pt[0] for pt in phone_hash[ec_phone[:num_char]] if pt[3] == ec_phone])
-    zip_matches = set([pt[0] for pt in zip_hash[ec_zip[:num_char]] if pt[4] == ec_zip])
+    zip_matches   = set([pt[0] for pt in zip_hash[ec_zip[:num_char]]     if pt[4] == ec_zip])
     
     # if any of these data types, on their own, produce only one mrn match, then we add it to a list
     matching_mrns = list()
@@ -158,6 +197,7 @@ for pt_mrn, ec_first, ec_last, ec_phone, ec_zip, relationship in tqdm(ec_data_su
         matching_mrns.extend([(mrn, 'zip') for mrn in zip_matches])
     
     # now we try combinations of 2
+    ## here we're looking at intersections of sets of mrns
     if len(first_matches & last_matches) == 1:
         matching_mrns.extend([(mrn, 'first,last') for mrn in (first_matches & last_matches)])
     if len(first_matches & phone_matches) == 1:
