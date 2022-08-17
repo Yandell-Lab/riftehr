@@ -45,6 +45,7 @@ join cell.x_ln_cnt b on a.LastName = b.LastName
 where b.cnt = 1 ;
 create unique index on cell.x_ln_unique(LastName);
 
+create table lastname_peek as 
 select distinct a.MRN_1 as empi_or_mrn, a.EC_Relationship as relationship, b.MRN as relation_empi_or_mrn, 'last' as matched_path
 from cell.x_ec_processed a
 join cell.x_ln_unique b on a.EC_LastName = b.LastName;
