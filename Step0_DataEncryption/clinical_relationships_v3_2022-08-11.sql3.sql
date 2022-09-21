@@ -47,8 +47,7 @@ CREATE TABLE actual_and_inf_rel_part1_unique (
   relationship varchar(255) DEFAULT NULL,
   relation_mrn varchar(20) DEFAULT NULL,
   provided_relationship int DEFAULT NULL,
-  unique(mrn),
-  unique(relation_mrn)
+  unique(mrn,relation_mrn)
 ); 
 
 
@@ -518,7 +517,7 @@ CREATE TABLE matches_wo_spouse (
   mrn varchar(25) DEFAULT NULL,
   relationship_group varchar(255) DEFAULT NULL,
   relation_mrn varchar(25) DEFAULT NULL,
-  matched_path varchar(255) DEFAULT NULL,
+  matched_paths varchar(255)[] DEFAULT NULL,
   unique(relation_mrn)
 ); 
 
@@ -564,9 +563,8 @@ DROP TABLE IF EXISTS pt_demog;
 
 CREATE TABLE pt_demog (
   mrn varchar(20) DEFAULT NULL,
-  year varchar(4) DEFAULT NULL,
+  year int DEFAULT NULL,
   sex varchar(1) DEFAULT NULL,
-  unique(mrn),
   unique(mrn)
 ); 
 
@@ -579,9 +577,10 @@ CREATE TABLE pt_matches (
   mrn varchar(25) DEFAULT NULL,
   relationship varchar(255) DEFAULT NULL,
   relation_mrn varchar(25) DEFAULT NULL,
-  matched_path varchar(255) DEFAULT NULL,
-  unique(mrn),
-  unique(relation_mrn)
+  matched_path varchar(255)[] DEFAULT NULL,
+  -- unique(mrn),
+  -- unique(relation_mrn)
+  -- unique(mrn, relation_mrn)
 ); 
 
 
