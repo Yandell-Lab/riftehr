@@ -10,16 +10,15 @@ Run: julia 3_Infer_Relationships.jl
 =#
 
 # define the matches dictionary
-matches_dict = Dict{ASCIIString,Array{Tuple{ASCIIString, ASCIIString, Int64}}}()
+matches_dict = Dict{String,Array{Tuple{String, String, Int64}}}()
 
 fh = open("patient_relations_w_opposites_part2.csv", "r")
-rel_text = readall(fh)
-
-lines = split(rel_text, '\r')
+#rel_text = readall(fh)
+#lines = split(rel_text, '\r')
 
 i = 0
-for ln in lines
-	i += 1
+for ln in eachline(fh)
+	global i += 1
 	if i == 1
 		continue
 	end
@@ -52,44 +51,21 @@ x = deepcopy(matches_dict)
 #print(x)
 b = 0
 while true
+      global x
 	a = 0
-	f = 0                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
-	x2 = x
-	b += 1
+	f = 0
+	local x2 = x
+	global b += 1
 	#print(b)
 	for i in keys(x) ###i is the key of the dictionary (EMPI)
 		f += 1
-		#print(i)
-		#print("\t")
-		#print(f)
-		#print(" of ")
-		#print(length(x))
-		#print("\n")
-		#print("i is", i)
-		#print("\t")
-		#print(a)
-		#print("\n")
 		for j in x[i] ### j are the pairs of relationships associated with the empi i
-			#print(j)
-			#print("\t")
-			#print(haskey(x, j[2]))
-			#print("\t")
 			if haskey(x, j[2]) #tries to find the empi from the pair as key 
-				#print(a)
-				#print("\t")
-				#print(j[1])
 				for z in x[j[2]] #z are the relationships from the empi that was found as a key
-					#print(z)
-					#print("\t")
-					#print(j[1])
-					#print("\t")
-
-					
 					if z[2] == i
 						# we won't infer relationships from the individual to themselves
 						continue
 					end
-					
 					
 					if j[1] == "Parent"
 						if z[1] == "Sibling"
