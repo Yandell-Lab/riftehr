@@ -20,8 +20,8 @@ import networkx.algorithms.isomorphism as iso
 inf = sys.argv[1]
 ouf = sys.argv[2]
 
-reader = csv.reader(open(inf, 'rU'), delimiter=',')
-header = reader.next()
+reader = csv.reader(open(inf, 'r'), delimiter=',')
+#header = reader.next() // no headers in \copy output
 
 a = []
 b = []
@@ -41,7 +41,9 @@ for i in range(len(all_relationships)):
     u.add_edge(all_relationships[i][0], all_relationships[i][1], rel=all_relationships[i][2])
 
 # Components sorted by size
-comp = sorted(nx.connected_component_subgraphs(u), key=len, reverse=True)
+## v2ism: comp = sorted(nx.connected_component_subgraphs(u), key=len, reverse=True)
+comp = (u.subgraph(c) for c in nx.connected_components(u))
+comp = sorted(list(comp), key = len, reverse = True)
 
 outfh = open(ouf, 'w')
 writer = csv.writer(outfh)
