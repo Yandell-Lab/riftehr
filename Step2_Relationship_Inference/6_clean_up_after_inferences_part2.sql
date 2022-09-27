@@ -1,7 +1,7 @@
 
 -- ### Import output_patient_relations_w_opposites_part2 as actual_and_inf_rel_part2 into the database
--- UT
-\copy actual_and_inf_rel_part2 from ~/gits/github/ds-ehr/data/output_patient_relations_w_opposites_part2.csv csv
+-- UT: move the copy to external script to parameterize the working directory
+-- \copy actual_and_inf_rel_part2 from ~/gits/github/ds-ehr/data/output_patient_relations_w_opposites_part2.csv csv
 
 -- ### Creating table with unique pairs and relationships
 drop table if exists actual_and_inf_rel_part2_unique;
@@ -21,17 +21,18 @@ from actual_and_inf_rel_part2 a
 
 -- ### Add new field to "actual_and_inf_rel_part2_unique" called provided_relationship (INT)
 update actual_and_inf_rel_part2_unique a
-join patient_relations_w_opposites_clean b on a.mrn = b.mrn and a.relationship = b.relationship and a.relation_mrn = b.relation_mrn
-set provided_relationship = 1;
+set provided_relationship = 1
+from patient_relations_w_opposites_clean b
+where a.mrn = b.mrn 
+      and a.relationship = b.relationship
+      and a.relation_mrn = b.relation_mrn
+;
 
 
 -- ### Duplicate table actual_and_inf_rel_part2_unique and name it actual_and_inf_rel_part2_unique_clean
-
-
 -- ### Add indexes
-
-
 -- ### Identifying mrn = to relation_mrn (Self) <--- 0 cases! 
+
 select count(*) --*
 from actual_and_inf_rel_part2_unique_clean
 where mrn = relation_mrn;
@@ -86,7 +87,7 @@ where (a.mrn = b. mrn) and (a.relation_mrn = b.relation_mrn) and provided_relati
 
 update actual_and_inf_rel_part2_unique_clean a
 set relationship_specific = c.relationship_name --'Mother' or 'Father'
-from pt_matches b,relationship_lookup c
+from pt_matches b, relationship_lookup c
 where a.mrn = b.mrn 
       and a.relation_mrn = b.relation_mrn
       and b.relationship = c.relationship
@@ -112,7 +113,7 @@ where a.mrn = b.mrn
 -- ### Identifying and updating PROVIDED aunts for not conflicting cases
 -- UT "Uncle" was not done??
 update actual_and_inf_rel_part2_unique_clean a
-SET a.relationship_specific = c.relationship_name
+SET relationship_specific = c.relationship_name
 from pt_matches b, relationship_lookup c
 where a.mrn = b.mrn 
       and a.relation_mrn = b.relation_mrn
@@ -270,16 +271,14 @@ delete from actual_and_inf_rel_part2_unique_clean where relationship = 'Parent/A
 drop table if exists delete_part2_child_nephew_niece_cases;
 create table delete_part2_child_nephew_niece_cases as
 select b.mrn, b.relation_mrn, c.relationship
-from(
-select mrn, relation_mrn, count(relationship)
-from (
-select distinct mrn, relationship, `relation_mrn`
-from actual_and_inf_rel_part2_unique_clean
-where relationship like 'Child' or relationship like '%Nephew/Niece'
-)a
-group by  mrn, relation_mrn
-having count(relationship)>1
-)b
+from( select mrn, relation_mrn, count(relationship)
+      from ( select distinct mrn, relationship, relation_mrn
+             from actual_and_inf_rel_part2_unique_clean
+             where relationship like 'Child' or relationship like '%Nephew/Niece'
+           ) a
+      group by  mrn, relation_mrn
+      having count(relationship)>1
+     ) b
 join actual_and_inf_rel_part2_unique_clean c on (b.mrn = c.mrn) and (b.relation_mrn = c.relation_mrn)
 where c.relationship like 'Child/Nephew/Niece'
 ;
@@ -317,31 +316,31 @@ from actual_and_inf_rel_part2_unique_clean a
 join delete_part2_sibling_cousin_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship);
 */
 
+-- UT: we can't have "parent-in-law" from EDW
+-- -- ### Removing Parent/Parent-in-law from pairs that have Parent 
+-- drop table if exists delete_part2_parent_in_law_cases;
+-- create table delete_part2_parent_in_law_cases as
+-- select b.mrn, b.relation_mrn, c.relationship
+-- from(
+-- select mrn, relation_mrn, count(relationship)
+-- from (
+-- select distinct mrn, relationship, `relation_mrn`
+-- from actual_and_inf_rel_part2_unique_clean
+-- where relationship ='Parent' or relationship like 'Parent/Parent%'
+-- )a
+-- group by  mrn, relation_mrn
+-- having count(relationship)>1
+-- )b
+-- join actual_and_inf_rel_part2_unique_clean c on (b.mrn = c.mrn) and (b.relation_mrn = c.relation_mrn)
+-- where c.relationship like 'Parent/Parent%'
+-- ;
 
--- ### Removing Parent/Parent-in-law from pairs that have Parent 
-drop table if exists delete_part2_parent_in_law_cases;
-create table delete_part2_parent_in_law_cases as
-select b.mrn, b.relation_mrn, c.relationship
-from(
-select mrn, relation_mrn, count(relationship)
-from (
-select distinct mrn, relationship, `relation_mrn`
-from actual_and_inf_rel_part2_unique_clean
-where relationship ='Parent' or relationship like 'Parent/Parent%'
-)a
-group by  mrn, relation_mrn
-having count(relationship)>1
-)b
-join actual_and_inf_rel_part2_unique_clean c on (b.mrn = c.mrn) and (b.relation_mrn = c.relation_mrn)
-where c.relationship like 'Parent/Parent%'
-;
-
--- ### Delete Parent/Parent-in-law that can be excluded from the table unique_clean
-delete a
-from actual_and_inf_rel_part2_unique_clean a
-join delete_part2_parent_in_law_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship);
+-- -- ### Delete Parent/Parent-in-law that can be excluded from the table unique_clean
+-- delete from actual_and_inf_rel_part2_unique_clean a
+-- join delete_part2_parent_in_law_cases b on a.mrn = b.mrn and a.relation_mrn = b.relation_mrn and a.relationship = b.relationship;
 
 -- ### Removing Child/Child-in-law from pairs that have Child
+-- UT:/ibid/
 /*
 drop table if exists delete_part2_child_in_law_cases;
 create table delete_part2_child_in_law_cases as
@@ -633,7 +632,7 @@ join relationships_and_opposites b on a.relationship = b.relationship
 create index on actual_and_inf_rel_part2_unique_clean(mrn);
 create index on actual_and_inf_rel_part2_unique_clean(relation_mrn);
 
-/* testing */
+/* Testing.  Maybe move this to Step2/7_ */
 
 /* 1: grandparents not parents nor spouses */
 select a.relation_mrn, d.sex 
@@ -642,6 +641,8 @@ from actual_and_inf_rel_part2_unique_clean a
 where a.relationship = 'Grandparent'
       and not exists(select 1 from actual_and_inf_rel_part2_unique_clean b 
                      where a.relation_mrn = b.relation_mrn and b.relationship in ( 'Parent', 'Spouse'))
+;                     
+                     
 
 /* 1.b with derivatives*/
 select a.relation_mrn as grand, a.relationship, a.mrn as g2, d.sex, b.relationship, b.mrn 
@@ -651,6 +652,9 @@ from actual_and_inf_rel_part2_unique_clean a
 where a.relationship = 'Grandparent'
       and b.relationship in ( 'Parent', 'Spouse');
 
+/*
+ * DANGER, DANGER, DANGER
+ */
 /*2: the Parent is right to left, the Child is left to right; Unify that (right to left) */
 drop table if exists forward_rtl;
 create table forward_rtl as 
@@ -668,6 +672,7 @@ select g.*
 from forward_rtl f
 join forward_rtl g on f.mrn = g.mrn and f.relation_mrn != g.relation_mrn
 where f.relationship = 'Grandparent' and g.relationship = 'Grandparent'
+;
 -- zero rows
 
 /* 2.b two parents one child */
@@ -689,10 +694,12 @@ where relationship = 'Parent'
 ;      
 --235 rows
 
-
+/*
+ * NOT QUITE SOUP YET
+ *
 with recursive tree (ego, ma, pa, sex, gen) as
 ( 
-/*singleton founder*/
+-- singleton founder
 (select distinct a1.mrn as ego
          , a1.relation_mrn as ma
          , null::text -- a2.relation_mrn as pa
@@ -750,8 +757,7 @@ select distinct a1.mrn as ego
   join pt_demog e on a1.mrn = e.mrn
   where d.sex = 'F'
   and not exists(select 1 from forward_rtl b 
-                     where a1.relation_mrn = b.mrn and b.relationship = 'Parent');
-
+                     where a1.relation_mrn = b.mrn and b.relationship = 'Parent')
   union
   select distinct a1.mrn as ego
          , null::text -- a2.relation_mrn as pa
@@ -763,22 +769,17 @@ select distinct a1.mrn as ego
   join pt_demog e on a1.mrn = e.mrn
   where d.sex = 'M'
   and not exists(select 1 from forward_rtl b 
-                     where a1.relation_mrn = b.mrn and b.relationship = 'Parent');
-;
-
-
+                     where a1.relation_mrn = b.mrn and b.relationship = 'Parent')
   left join forward_rtl a2 on a1.mrn = a2.mrn and a1.relation_mrn != a2.relation_mrn
   left join pt_demog f on a2.relation_mrn = f.mrn 
   where a1.relationship = 'Parent'
       and e.sex = 'F'
       and e.sex = 'M'
       and not exists(select 1 from forward_rtl b 
-                     where a1.relation_mrn = b.mrn and b.relationship = 'Parent');
-
-
-
+                     where a1.relation_mrn = b.mrn and b.relationship = 'Parent')
   union
-select distinct a.mrn as ego
+  select distinct 
+         a.mrn as ego
          , a.relation_mrn as ma
          , null as pa
          ,e.sex
@@ -790,19 +791,18 @@ select distinct a.mrn as ego
   where a.relationship = 'Parent'
       and e.sex = 'M'
       and not exists(select 1 from forward_rtl b 
-                     where a.relation_mrn = b.mrn and b.relationship = 'Parent');
+                     where a.relation_mrn = b.mrn and b.relationship = 'Parent')
+;
   
 select a.mrn::int as ego, a.relation_mrn::int as ma, null::int as pa, 1::int as gen
-  from actual_and_inf_rel_part2_unique_clean a 
-  join pt_demog d on a.relation_mrn = d.mrn
-  join actual_and_inf_rel_part2_unique_clean b and d.mrn = b.relation_mrn
-  where a.relationship = 'Parent' 
-        and b.relationship = 'Spouse'
-        and d.sex = 'F'
-        and not exists (select 1 from actual_and_inf_rel_part2_unique_clean b where b.mrn = a.relation_mrn and b.relationship = 'Parent')
-;
-
-
+from actual_and_inf_rel_part2_unique_clean a 
+join pt_demog d on a.relation_mrn = d.mrn
+join actual_and_inf_rel_part2_unique_clean b and d.mrn = b.relation_mrn
+where a.relationship = 'Parent' 
+      and b.relationship = 'Spouse'
+      and d.sex = 'F'
+      and not exists (select 1 from actual_and_inf_rel_part2_unique_clean b 
+                      where b.mrn = a.relation_mrn and b.relationship = 'Parent')
  union all
   select c.mrn, c.relationship, c.relation_mrn, t.gen+1
   from tree t join actual_and_inf_rel_part2_unique_clean c
@@ -811,6 +811,4 @@ select a.mrn::int as ego, a.relation_mrn::int as ma, null::int as pa, 1::int as 
 )       
 select * from tree order by gen desc 
 ;
-
-
-
+*/

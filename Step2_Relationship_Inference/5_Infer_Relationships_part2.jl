@@ -8,11 +8,16 @@ Export as csv with lines terminated by '/r'
 Run: julia 3_Infer_Relationships.jl
  
 =#
+global datadir = "./"
+if length(ARGS) >= 1
+   datadir = ARGS[1] * "/"
+end
+
 
 # define the matches dictionary
 matches_dict = Dict{String,Array{Tuple{String, String, Int64}}}()
 
-fh = open("patient_relations_w_opposites_part2.csv", "r")
+fh = open(datadir * "patient_relations_w_opposites_part2.csv", "r")
 #rel_text = readall(fh)
 #lines = split(rel_text, '\r')
 
@@ -359,7 +364,7 @@ while true
 end # while
 
 
-outfh = open("output_patient_relations_w_opposites_part2.csv", "w")
+outfh = open(datadir * "output_patient_relations_w_opposites_part2.csv", "w")
 for pid in keys(x)
 	for row in x[pid]
 		write(outfh, join((pid, row[1], row[2], row[3]), ","), "\n")

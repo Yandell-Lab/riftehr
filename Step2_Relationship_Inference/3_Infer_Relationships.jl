@@ -5,9 +5,13 @@ Data: relationships AND opposites
 
 Export as csv with lines terminated by '/r'
 
-Run: julia 3_Infer_Relationships.jl
+: julia 3_Infer_Relationships.jl <data file> [ <report file> ]
  
 =#
+global datadir = "./"
+if length(ARGS) >= 1
+   datadir = ARGS[1] * "/"
+end
 
 # define the matches dictionary
 matches_dict = Dict{String,Array{Tuple{String, String, Int64}}}()
@@ -16,12 +20,12 @@ matches_dict = Dict{String,Array{Tuple{String, String, Int64}}}()
 #rel_text = read(fh, String)
 #print(rel_text)
 #lines = split(rel_text, "\n")
-lines = readlines("patient_relations_w_opposites_clean.csv")
+
 
 i = 0
-for ln in lines
+for ln in eachline(datadir * "patient_relations_w_opposites_clean.csv")
     global i += 1
-    if i == 1
+    if i == 1  #header
         continue
     end
 
@@ -359,8 +363,7 @@ while true
     end
 end # while
 
-
-outfh = open("output_actual_and_inferred_relationships.csv", "w")
+global outfh = open(datadir * "output_actual_and_inferred_relationships.csv", "w")
 for pid in keys(x)
     for row in x[pid]
         write(outfh, join((pid, row[1], row[2], row[3]), ","), "\n")

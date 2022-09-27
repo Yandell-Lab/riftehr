@@ -1,4 +1,4 @@
---### Import output_actual_and_inferred_relationships.csv into database as actual_and_inf_rel_part1
+--### Having imported output_actual_and_inferred_relationships.csv into database as actual_and_inf_rel_part1
 
 --### Creating table with unique pairs and relationships
 drop table if exists actual_and_inf_rel_part1_unique;
@@ -27,9 +27,9 @@ from actual_and_inf_rel_part1_unique;
 create unique index on actual_and_inf_rel_part1_unique_clean(mrn,relation_mrn);
 
 --### Identifying mrn = to relation_mrn (Self) <--- 0 cases! If not = 0, exclude those
-select *
-from actual_and_inf_rel_part1_unique_clean
-where mrn = relation_mrn;
+-- select *
+-- from actual_and_inf_rel_part1_unique_clean
+-- where mrn = relation_mrn;
 -- 
 -- rjs original THIS SHOULD BE DONE MUCH EARLIER
 delete from actual_and_inf_rel_part1_unique_clean where mrn = relation_mrn;
@@ -96,67 +96,81 @@ where a.mrn = b.mrn
 
 
 --### Identifying all 'Parent' that are = MOTHER by gender 
-
 update actual_and_inf_rel_part1_unique_clean x
-set x.relationship_specific = 'Mother' 
-join (select d.relation_mrn from
+set relationship_specific = 'Mother'
+from (select d.relation_mrn from
              (select c.relation_mrn, count(c.relation_mrn) from 
-                     (select distinct a.relation_mrn, b.SEX from actual_and_inf_rel_part1_unique_clean a
-                                                            join pt_demog b on a.relation_mrn = b.mrn
-                                                            where a.relationship = 'Parent' 
-                                                            and a.relationship_specific is NULL
-                     ) c
+                     (select distinct a.relation_mrn, b.SEX 
+                      from actual_and_inf_rel_part1_unique_clean a
+                      join pt_demog b on a.relation_mrn = b.mrn
+                      where a.relationship = 'Parent' 
+                            and a.relationship_specific is NULL
+                     ) as c
               group by c.relation_mrn
-              having count(c.relation_mrn) =1 
+              having count(c.relation_mrn) = 1 
               ) d
        join pt_demog e on d.relation_mrn = e.mrn
        where e.SEX = 'F'
-      )y on x.relation_mrn = y.relation_mrn
-where x.relationship = 'Parent' and x.relationship_specific is NULL;
+      ) as y 
+where x.relation_mrn = y.relation_mrn
+      and x.relationship = 'Parent' 
+      and x.relationship_specific is NULL;
 
+/* OR
+
+
+update actual_and_inf_rel_part1_unique_clean  a
+set relationship_specific = case when d.sex = 'F' then 'Mother'
+                                 when d.sex = 'M' then 'Father'
+                            end
+from pt_demog d
+where a.relation_mrn = d.mrn;
+
+
+*/
 --### Identifying all "Parent" that are = FATHER by gender 
-
 update actual_and_inf_rel_part1_unique_clean x
-join (
-select d.relation_mrn
-from (
-select c.relation_mrn, count(c.relation_mrn)
-from (
-select distinct a.relation_mrn, b.SEX
-from actual_and_inf_rel_part1_unique_clean a
-join pt_demog b on (a.relation_mrn = b.mrn)
-where a.relationship = 'Parent' and a.relationship_specific is NULL
-) c
-group by c.relation_mrn
-having count(c.relation_mrn) =1 
-) d
-join pt_demog e on d.relation_mrn = e.mrn
-where e.SEX = 'M'
-)y on x.relation_mrn = y.relation_mrn
-SET x.relationship_specific = 'Father' 
-where x.relationship = 'Parent' and x.relationship_specific is NULL;
-
+SET relationship_specific = 'Father' 
+from ( select d.relation_mrn
+       from ( select c.relation_mrn, count(c.relation_mrn)
+              from ( select distinct a.relation_mrn, b.SEX
+                     from actual_and_inf_rel_part1_unique_clean a
+                     join pt_demog b on a.relation_mrn = b.mrn
+                     where a.relationship = 'Parent' 
+                           and a.relationship_specific is NULL
+                    ) c
+                    group by c.relation_mrn
+                    having count(c.relation_mrn) =1 
+             ) d
+             join pt_demog e on d.relation_mrn = e.mrn
+             where e.SEX = 'M'
+      ) y
+where x.relation_mrn = y.relation_mrn
+      and x.relationship = 'Parent' 
+      and x.relationship_specific is NULL;
+/*
+*  See "OR" above
+*/
 --### Identifying all "Aunt/Uncle" that are = Aunt by gender 
-
-update actual_and_inf_rel_part1_unique_clean x
-join (
-select d.relation_mrn
-from (
-select c.relation_mrn, count(c.relation_mrn)
-from (
-select distinct a.relation_mrn, b.SEX
-from actual_and_inf_rel_part1_unique_clean a
-join pt_demog b on (a.relation_mrn = b.mrn)
-where a.relationship = 'Aunt/Uncle' and a.relationship_specific is NULL
-) c
-group by c.relation_mrn
-having count(c.relation_mrn) =1 
-) d
-join pt_demog e on d.relation_mrn = e.mrn
-where e.SEX = 'F'
-)y on x.relation_mrn = y.relation_mrn
-SET x.relationship_specific = 'Aunt' 
-where x.relationship = 'Aunt/Uncle' and x.relationship_specific is NULL;
+-- update actual_and_inf_rel_part1_unique_clean x
+-- join (
+-- select d.relation_mrn
+-- from (
+-- select c.relation_mrn, count(c.relation_mrn)
+-- from (
+-- select distinct a.relation_mrn, b.SEX
+-- from actual_and_inf_rel_part1_unique_clean a
+-- join pt_demog b on (a.relation_mrn = b.mrn)
+-- where a.relationship = 'Aunt/Uncle' and a.relationship_specific is NULL
+-- ) c
+-- group by c.relation_mrn
+-- having count(c.relation_mrn) =1 
+-- ) d
+-- join pt_demog e on d.relation_mrn = e.mrn
+-- where e.SEX = 'F'
+-- )y on x.relation_mrn = y.relation_mrn
+-- SET x.relationship_specific = 'Aunt' 
+-- where x.relationship = 'Aunt/Uncle' and x.relationship_specific is NULL;
 
 --### Identifying all "Aunt/Uncle" that are = Uncle by gender 
 
@@ -193,16 +207,15 @@ where a.relationship = 'Aunt/Uncle'
       and a.relation_mrn = e.mrn
 ;
 
-
-
 --### Removing Parent/Aunt/Uncle from pairs that have Parent or Aunt/Uncle (count = 2) 
 --    and cases that have Parent/Aunt/Uncle and Parent and Aunt/Uncle (count = 3)
 --
 -- we don't have any of these (100K)
+drop table if exists delete_part1_parent_aunt_uncle_cases;
 create table delete_part1_parent_aunt_uncle_cases as 
 select b.mrn, b.relation_mrn, c.relationship 
 from ( select mrn, relation_mrn, count(relationship)
-       from ( select distinct mrn, relationship, `relation_mrn`
+       from ( select distinct mrn, relationship, relation_mrn
               from actual_and_inf_rel_part1_unique_clean
               where relationship like 'Parent' or relationship like '%Aunt/Uncle'
             )a
@@ -213,20 +226,23 @@ join actual_and_inf_rel_part1_unique_clean c on (b.mrn = c.mrn) and (b.relation_
 where c.relationship like 'Parent/Aunt/Uncle'
 ;
 --### Delete "Parent/Aunt/Uncle that can be excluded from the table unique_clean
-delete a
-from actual_and_inf_rel_part1_unique_clean a
-join delete_part1_parent_aunt_uncle_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship);
+delete from actual_and_inf_rel_part1_unique_clean a
+using delete_part1_parent_aunt_uncle_cases b 
+where a.mrn = b.mrn 
+      and a.relation_mrn = b.relation_mrn 
+      and a.relationship = b.relationship;
 
 
 --### Removing Child/Nephew/Niece from pairs that have Child or Nephew/Niece or both 
 --
 -- none of these either
-create table delete_part1_child_nephew_niece_cases
+drop table if exists delete_part1_child_nephew_niece_cases;
+create table delete_part1_child_nephew_niece_cases as
 select b.mrn, b.relation_mrn, c.relationship
 from(
 select mrn, relation_mrn, count(relationship)
 from (
-select distinct mrn, relationship, `relation_mrn`
+select distinct mrn, relationship, relation_mrn
 from actual_and_inf_rel_part1_unique_clean
 where relationship like 'Child' or relationship like '%Nephew/Niece'
 )a
@@ -240,9 +256,9 @@ where c.relationship like 'Child/Nephew/Niece'
 
 
 --### Delete Child/Nephew/Niece that can be excluded from the table unique_clean
-delete a
-from actual_and_inf_rel_part1_unique_clean a
-join delete_part1_child_nephew_niece_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship);
+delete from actual_and_inf_rel_part1_unique_clean a
+using delete_part1_child_nephew_niece_cases b
+where a.mrn = b.mrn and a.relation_mrn = b.relation_mrn and a.relationship = b.relationship;
 
 
 --### Removing Sibling/Cousin from pairs that have Child or Nephew/Niece or both
@@ -315,7 +331,7 @@ drop table if exists delete_part1_grandaunt_in_law_cases;
 create table delete_part1_grandaunt_in_law_cases as
 select b.mrn, b.relation_mrn, c.relationship
 from ( select mrn, relation_mrn, count(relationship)
-       from ( select distinct mrn, relationship, `relation_mrn`
+       from ( select distinct mrn, relationship, relation_mrn
               from actual_and_inf_rel_part1_unique_clean
               where relationship ='Grandaunt/Granduncle' or relationship like 'Grandaunt/Granduncle/Grandaunt%'
             ) a
@@ -327,9 +343,11 @@ where c.relationship like 'Grandaunt/Granduncle/Grandaunt%'
 ;
 
 --### Delete Grandaunt/Granduncle/Grandaunt-in-law/Granduncle-in-law that can be excluded from the table unique_clean
-delete a
-from actual_and_inf_rel_part1_unique_clean a
-join delete_part1_grandaunt_in_law_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship);
+delete from actual_and_inf_rel_part1_unique_clean a
+using delete_part1_grandaunt_in_law_cases b 
+where a.mrn = b.mrn 
+      and a.relation_mrn = b.relation_mrn 
+      and a.relationship = b.relationship;
 
 --### Removing Grandchild/Grandchild-in-law from pairs that have Grandchild
 drop table if exists delete_part1_grandchild_in_law_cases;
@@ -396,7 +414,7 @@ delete from actual_and_inf_rel_part1_unique_clean a
 using delete_part1_grandparent_in_law_cases b
 where (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship);
 
-/*
+/* UT: none in the EDW data export
 --### Removing Great-grandchild/Great-grandchild-in-law from pairs that have Great-grandchild
 create table delete_part1_greatgrandchild_in_law_cases
 select b.mrn, b.relation_mrn, c.relationship
@@ -445,9 +463,9 @@ from actual_and_inf_rel_part1_unique_clean a
 join delete_part1_greatgrandparent_in_law_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship);
 */
 
-# Nephew/Niece/Nephew-in-law/Niece-in-law
+-- # Nephew/Niece/Nephew-in-law/Niece-in-law
 
---### Removing Nephew/Niece/Nephew-in-law/Niece-in-law from pairs that have Nephew/Niece
+-- ### Removing Nephew/Niece/Nephew-in-law/Niece-in-law from pairs that have Nephew/Niece
 drop table if exists delete_part1_nephew_in_law_cases;
 create table delete_part1_nephew_in_law_cases as 
 select b.mrn, b.relation_mrn, c.relationship
@@ -469,8 +487,7 @@ using delete_part1_nephew_in_law_cases b
 where (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship);
 
 
-# Sibling/Sibling-in-law
-
+--# Sibling/Sibling-in-law
 --### Removing Sibling/Sibling-in-law from pairs that have Sibling
 drop table if exists delete_part1_sibling_in_law_cases;
 create table delete_part1_sibling_in_law_cases as 
@@ -507,4 +524,4 @@ from actual_and_inf_rel_part1_unique_clean a
 join relationships_and_opposites b on a.relationship = b.relationship
 ;
 
-\copy patient_relations_w_opposites_part2 to ~/gits/github/ds-ehr/data/patient_relations_w_opposites_part2.csv csv;
+-- copy-out done in wrapper to allow re-locating file

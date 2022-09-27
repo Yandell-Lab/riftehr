@@ -1,5 +1,6 @@
 -- ###Flip and clean up step
 -- # Create table to be updated 
+
 drop table if exists relations_matched_mrn_with_age_dif;
 create table relations_matched_mrn_with_age_dif
 as
@@ -14,8 +15,8 @@ select distinct
        cast(null as int) as exclude
 from pt_matches a
 join relationship_lookup b on a.relationship = b.relationship
-join pt_demog child on (child.mrn = a.mrn)
-join pt_demog parent on (parent.mrn = a.relation_mrn)
+join pt_demog child on child.mrn = a.mrn
+join pt_demog parent on parent.mrn = a.relation_mrn
 ;
 /* should get to here*/
 -- ##### exclude: 1 = delete / 2 = flip relationship
@@ -87,8 +88,7 @@ from pt_matches
 where array_length(matched_path,1) > 1;
 
 -- # create final table of matched relations
-drop table if exists patient_relations_w_opposites
-
+drop table if exists patient_relations_w_opposites;
 create table patient_relations_w_opposites as
 select distinct mrn, relationship, relation_mrn
 from pt_matches_clean
