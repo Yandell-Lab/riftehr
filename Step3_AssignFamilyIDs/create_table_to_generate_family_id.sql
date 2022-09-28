@@ -1,8 +1,8 @@
 -- ### Create table to identify families
-drop table if exists all_relationships_to_generate_family_id;
+drop table if exists all_relationships_to_generate_family_id\p\g
 create table all_relationships_to_generate_family_id as 
 select mrn, relationship, relation_mrn
-from ACTUAL_AND_INF_REL_CLEAN_FINAL
+from actual_and_inf_rel_clean_final
 where relationship != 'Spouse' 
       and relationship != 'Child-in-law' 
       and relationship != 'Parent-in-law'
@@ -17,5 +17,5 @@ where relationship != 'Spouse'
       and relationship != 'Great-grparent/Great-grandparent-in-law' 
       and relationship != 'Nephew/Niece/Nephew-in-law/Niece-in-law' 
       and relationship != 'Sibling/Sibling-in-law'
-;
+\p\g
 

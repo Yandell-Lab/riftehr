@@ -4,7 +4,7 @@
 -- \copy actual_and_inf_rel_part2 from ~/gits/github/ds-ehr/data/output_patient_relations_w_opposites_part2.csv csv
 
 -- ### Creating table with unique pairs and relationships
-drop table if exists actual_and_inf_rel_part2_unique;
+drop table if exists actual_and_inf_rel_part2_unique\p\g
 create table actual_and_inf_rel_part2_unique as
 select  a.mrn
         , a.relationship
@@ -16,7 +16,7 @@ from actual_and_inf_rel_part2 a
      left join patient_relations_w_opposites_clean b on a.mrn = b.mrn 
           and a.relationship = b.relationship 
           and a.relation_mrn = b.relation_mrn
-;
+\p\g
 
 
 -- ### Add new field to "actual_and_inf_rel_part2_unique" called provided_relationship (INT)
@@ -26,7 +26,7 @@ from patient_relations_w_opposites_clean b
 where a.mrn = b.mrn 
       and a.relationship = b.relationship
       and a.relation_mrn = b.relation_mrn
-;
+\p\g
 
 
 -- ### Duplicate table actual_and_inf_rel_part2_unique and name it actual_and_inf_rel_part2_unique_clean
@@ -35,20 +35,20 @@ where a.mrn = b.mrn
 
 select count(*) --*
 from actual_and_inf_rel_part2_unique_clean
-where mrn = relation_mrn;
+where mrn = relation_mrn\p\g
 
 
 -- ### Create new column conflicting_provided_relationship at actual_and_inf_rel_part2_unique_clean
 -- UT this has been done in the global DDL but we have to diddle with uniqueness constraint
-alter table actual_and_inf_rel_part2_unique_clean drop constraint actual_and_inf_rel_part2_unique_clean_mrn_key;
+alter table actual_and_inf_rel_part2_unique_clean drop constraint if exists actual_and_inf_rel_part2_unique_clean_mrn_key\p\g
 -- UT the DDL has been updated
-alter table actual_and_inf_rel_part2_unique_clean add unique (mrn, relation_mrn);
+alter table actual_and_inf_rel_part2_unique_clean add unique (mrn, relation_mrn)\p\g
 
 -- UT had to get rid of some dupes that survived this far
 -- select a.mrn, a.relationship, b.relationship, b.relation_mrn 
 -- from actual_and_inf_rel_part2_unique a 
 --      join actual_and_inf_rel_part2_unique b on a.mrn = b.mrn 
---           and a.relation_mrn = b.relation_mrn and a.relationship < b.relationship;
+--           and a.relation_mrn = b.relation_mrn and a.relationship < b.relationship\p\g
 --    mrn   | relationship |     relationship     | relation_mrn 
 -- ---------+--------------+----------------------+--------------
 --  8982931 | Parent       | Parent/Aunt/Uncle    | 889221
@@ -68,7 +68,7 @@ alter table actual_and_inf_rel_part2_unique_clean add unique (mrn, relation_mrn)
 insert into actual_and_inf_rel_part2_unique_clean
 (mrn, relationship, relation_mrn, provided_relationship, conflicting_provided_relationship, relationship_specific)
 select a.*, null, null from actual_and_inf_rel_part2_unique a
-;
+\p\g
 
 
 -- ### Tagging conflicting provided relationships
@@ -76,13 +76,13 @@ select a.*, null, null from actual_and_inf_rel_part2_unique a
 update actual_and_inf_rel_part2_unique_clean a
 set conflicting_provided_relationship = 1
 from provided_relationships_conflicting b
-where (a.mrn = b. mrn) and (a.relation_mrn = b.relation_mrn) and provided_relationship = 1;
+where (a.mrn = b. mrn) and (a.relation_mrn = b.relation_mrn) and provided_relationship = 1\p\g
 
 -- ### Create new column relationship_specific at actual_and_inf_rel_part2_unique_clean
 
 -- ### Identifying and updating PROVIDED mothers for not conflicting cases
 -- UT
--- alter table actual_and_inf_rel_part2_unique_clean add column relationship_specific int null;
+-- alter table actual_and_inf_rel_part2_unique_clean add column relationship_specific int null\p\g
 
 
 update actual_and_inf_rel_part2_unique_clean a
@@ -95,7 +95,7 @@ where a.mrn = b.mrn
       and a.provided_relationship = 1 
       and a.conflicting_provided_relationship is NULL 
       and a.relationship_specific is NULL
-;
+\p\g
 
 -- ### Identifying and updating PROVIDED fathers for not conflicting cases
 -- UT: one fell swoop
@@ -107,7 +107,7 @@ where a.mrn = b.mrn
 -- and c.relationship_name = "Father" 
 -- and a.provided_relationship = 1 
 -- and a.conflicting_provided_relationship is NULL 
--- and a.relationship_specific is NULL;
+-- and a.relationship_specific is NULL\p\g
 
 
 -- ### Identifying and updating PROVIDED aunts for not conflicting cases
@@ -121,12 +121,12 @@ where a.mrn = b.mrn
       and a.relationship = 'Aunt/Uncle' 
       and a.provided_relationship = 1 
       and a.conflicting_provided_relationship is NULL 
-      and a.relationship_specific is NULL;
+      and a.relationship_specific is NULL\p\g
 
 
 -- ### Identifying all "Parent" that are = MOTHER by gender 
 /*
-Give me a break;
+Give me a break\p\g
 update actual_and_inf_rel_part2_unique_clean x
 join (
 select d.relation_mrn
@@ -145,7 +145,7 @@ join database.pt_demog e on d.relation_mrn = e.mrn
 where e.SEX = 'F'
 )y on x.relation_mrn = y.relation_mrn
 SET x.relationship_specific = 'Mother' 
-where x.relationship = 'Parent' and x.relationship_specific is NULL;
+where x.relationship = 'Parent' and x.relationship_specific is NULL\p\g
 */
 
 -- UT There remains the confusion of having both id1 is parent of id2 and id2 is child of id1
@@ -155,7 +155,7 @@ set relationship_specific = case when d.sex = 'F' then 'Mother'
                             end
 from pt_demog d
 where x.relationship = 'Parent' and x.relationship_specific is null and x.mrn = d.mrn
-;
+\p\g
 
 -- ### Identifying all "Parent" that are = FATHER by gender 
 /*
@@ -178,7 +178,7 @@ join database.pt_demog e on d.relation_mrn = e.mrn
 where e.SEX = 'M'
 )y on x.relation_mrn = y.relation_mrn
 SET x.relationship_specific = 'Father' 
-where x.relationship = "Parent" and x.relationship_specific is NULL;
+where x.relationship = "Parent" and x.relationship_specific is NULL\p\g
 */
 
 -- UT There remains the confusion of having both id1 is parent of id2 and id2 is child of id1
@@ -188,7 +188,7 @@ set relationship_specific = case when d.sex = 'F' then 'Aunt'
                             end
 from pt_demog d
 where x.relationship = 'Aunt/Uncle' and x.relationship_specific is null and x.mrn = d.mrn
-;
+\p\g
 
 
 -- ### Identifying all "Aunt/Uncle" that are = Aunt by gender 
@@ -211,7 +211,7 @@ join database.pt_demog e on d.relation_mrn = e.mrn
 where e.SEX = 'F'
 )y on x.relation_mrn = y.relation_mrn
 SET x.relationship_specific = 'Aunt' 
-where x.relationship = "Aunt/Uncle" and x.relationship_specific is NULL;
+where x.relationship = "Aunt/Uncle" and x.relationship_specific is NULL\p\g
 
 -- ### Identifying all "Aunt/Uncle" that are = Uncle by gender 
 
@@ -233,7 +233,7 @@ join database.pt_demog e on d.relation_mrn = e.mrn
 where e.SEX = 'M'
 )y on x.relation_mrn = y.relation_mrn
 SET x.relationship_specific = 'Uncle' 
-where x.relationship = "Aunt/Uncle" and x.relationship_specific is NULL;
+where x.relationship = "Aunt/Uncle" and x.relationship_specific is NULL\p\g
 */
 
 -- ### Removing Parent/Aunt/Uncle from pairs that have Parent or
@@ -242,7 +242,7 @@ where x.relationship = "Aunt/Uncle" and x.relationship_specific is NULL;
 
 /* We don't have and 'Parent/Aunt/Uncle' at this point but still this is an overly complex way to delete any such record
 
-drop table if exists delete_part2_parent_aunt_uncle_cases;
+drop table if exists delete_part2_parent_aunt_uncle_cases\p\g
 create table delete_part2_parent_aunt_uncle_cases as
 select b.mrn, b.relation_mrn, c.relationship
 from(
@@ -257,18 +257,18 @@ having count(relationship)>1
 )b
 join actual_and_inf_rel_part2_unique_clean c on (b.mrn = c.mrn) and (b.relation_mrn = c.relation_mrn)
 where c.relationship like 'Parent/Aunt/Uncle'
-;
+\p\g
 
 
 -- ### Delete "Parent/Aunt/Uncle that can be excluded from the table unique_clean
 delete a
 from actual_and_inf_rel_part2_unique_clean a
-join delete_part2_parent_aunt_uncle_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship);
+join delete_part2_parent_aunt_uncle_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship)\p\g
 */
-delete from actual_and_inf_rel_part2_unique_clean where relationship = 'Parent/Aunt/Uncle';
+delete from actual_and_inf_rel_part2_unique_clean where relationship = 'Parent/Aunt/Uncle'\p\g
 
 -- ### Removing Child/Nephew/Niece from pairs that have Child or Nephew/Niece or both 
-drop table if exists delete_part2_child_nephew_niece_cases;
+drop table if exists delete_part2_child_nephew_niece_cases\p\g
 create table delete_part2_child_nephew_niece_cases as
 select b.mrn, b.relation_mrn, c.relationship
 from( select mrn, relation_mrn, count(relationship)
@@ -281,7 +281,7 @@ from( select mrn, relation_mrn, count(relationship)
      ) b
 join actual_and_inf_rel_part2_unique_clean c on (b.mrn = c.mrn) and (b.relation_mrn = c.relation_mrn)
 where c.relationship like 'Child/Nephew/Niece'
-;
+\p\g
 
 
 /*
@@ -289,11 +289,11 @@ as above
 -- ### Delete Child/Nephew/Niece that can be excluded from the table unique_clean
 delete a
 from actual_and_inf_rel_part2_unique_clean a
-join delete_part2_child_nephew_niece_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship);
+join delete_part2_child_nephew_niece_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship)\p\g
 
 
 -- ### Removing Sibling/Cousin from pairs that have Child or Nephew/Niece or both
-drop table if exists delete_part2_sibling_cousin_cases;
+drop table if exists delete_part2_sibling_cousin_cases\p\g
 create table delete_part2_sibling_cousin_cases as
 select b.mrn, b.relation_mrn, c.relationship
 from(
@@ -308,17 +308,17 @@ having count(relationship)>1
 )b
 join actual_and_inf_rel_part2_unique_clean c on (b.mrn = c.mrn) and (b.relation_mrn = c.relation_mrn)
 where c.relationship like 'Sibling/Cousin'
-;
+\p\g
 
 -- ### Delete Sibling/Cousin that can be excluded from the table unique_clean
 delete a
 from actual_and_inf_rel_part2_unique_clean a
-join delete_part2_sibling_cousin_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship);
+join delete_part2_sibling_cousin_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship)\p\g
 */
 
 -- UT: we can't have "parent-in-law" from EDW
 -- -- ### Removing Parent/Parent-in-law from pairs that have Parent 
--- drop table if exists delete_part2_parent_in_law_cases;
+-- drop table if exists delete_part2_parent_in_law_cases\p\g
 -- create table delete_part2_parent_in_law_cases as
 -- select b.mrn, b.relation_mrn, c.relationship
 -- from(
@@ -333,16 +333,16 @@ join delete_part2_sibling_cousin_cases b on (a.mrn = b.mrn) and (a.relation_mrn 
 -- )b
 -- join actual_and_inf_rel_part2_unique_clean c on (b.mrn = c.mrn) and (b.relation_mrn = c.relation_mrn)
 -- where c.relationship like 'Parent/Parent%'
--- ;
+-- \p\g
 
 -- -- ### Delete Parent/Parent-in-law that can be excluded from the table unique_clean
 -- delete from actual_and_inf_rel_part2_unique_clean a
--- join delete_part2_parent_in_law_cases b on a.mrn = b.mrn and a.relation_mrn = b.relation_mrn and a.relationship = b.relationship;
+-- join delete_part2_parent_in_law_cases b on a.mrn = b.mrn and a.relation_mrn = b.relation_mrn and a.relationship = b.relationship\p\g
 
 -- ### Removing Child/Child-in-law from pairs that have Child
 -- UT:/ibid/
 /*
-drop table if exists delete_part2_child_in_law_cases;
+drop table if exists delete_part2_child_in_law_cases\p\g
 create table delete_part2_child_in_law_cases as
 select b.mrn, b.relation_mrn, c.relationship
 from(
@@ -357,15 +357,15 @@ having count(relationship)>1
 )b
 join actual_and_inf_rel_part2_unique_clean c on (b.mrn = c.mrn) and (b.relation_mrn = c.relation_mrn)
 where c.relationship like 'Child/Child%'
-;
+\p\g
 
 -- ### Delete Child/Child-in-law that can be excluded from the table unique_clean
 delete a
 from actual_and_inf_rel_part2_unique_clean a
-join delete_part2_child_in_law_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship);
+join delete_part2_child_in_law_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship)\p\g
 */
 
--- UT select * from actual_and_inf_rel_part2_unique_clean where mrn in ('3697602', '3803901', '3803901', '2691335','3082877');
+-- UT select * from actual_and_inf_rel_part2_unique_clean where mrn in ('3697602', '3803901', '3803901', '2691335','3082877')\p\g
 -- UT    mrn   |     relationship     | relation_mrn | provided_relationship | conflicting_provided_relationship | relationship_specific 
 -- UT ---------+----------------------+--------------+-----------------------+-----------------------------------+-----------------------
 -- UT  3697602 | Child                | 3803901      |                     1 |                                   | 
@@ -389,7 +389,7 @@ join delete_part2_child_in_law_cases b on (a.mrn = b.mrn) and (a.relation_mrn = 
 -- UT It's unclear what parent-in-law means but we get rid of them anyway
 -- UT
 -- UT
--- UT select * from actual_and_inf_rel_part2_unique_clean where relationship  ~* 'in-law';
+-- UT select * from actual_and_inf_rel_part2_unique_clean where relationship  ~* 'in-law'\p\g
 -- UT    mrn   |     relationship     | relation_mrn | provided_relationship | conflicting_provided_relationship | relationship_specific 
 -- UT ---------+----------------------+--------------+-----------------------+-----------------------------------+-----------------------
 -- UT  3697602 | Parent/Parent-in-law | 2691335      |                       |                                   | 
@@ -398,10 +398,10 @@ join delete_part2_child_in_law_cases b on (a.mrn = b.mrn) and (a.relation_mrn = 
 -- UT  3736962 | Parent/Parent-in-law | 2691335      |                       |                                   | 
 -- UT (4 rows)
 -- UT
-delete from actual_and_inf_rel_part2_unique_clean where relationship ~* 'in-law';
+delete from actual_and_inf_rel_part2_unique_clean where relationship ~* 'in-law'\p\g
 
 -- UT We have only these 'grand' relationships
--- UT select distinct relationship from actual_and_inf_rel_part2_unique_clean where relationship ~* 'grand';
+-- UT select distinct relationship from actual_and_inf_rel_part2_unique_clean where relationship ~* 'grand'\p\g
 -- UT  relationship 
 -- UT --------------
 -- UT  Grandparent
@@ -410,7 +410,7 @@ delete from actual_and_inf_rel_part2_unique_clean where relationship ~* 'in-law'
 -- UT 
 
 -- ### Removing Grandaunt/Granduncle/Grandaunt-in-law/Granduncle-in-law from pairs that have Grandaunt/Granduncle
-/*drop table if exists delete_part2_grandaunt_in_law_cases;
+/*drop table if exists delete_part2_grandaunt_in_law_cases\p\g
 create table delete_part2_grandaunt_in_law_cases as
 select b.mrn, b.relation_mrn, c.relationship
 from(
@@ -425,15 +425,15 @@ having count(relationship)>1
 )b
 join actual_and_inf_rel_part2_unique_clean c on (b.mrn = c.mrn) and (b.relation_mrn = c.relation_mrn)
 where c.relationship like 'Grandaunt/Granduncle/Grandaunt%'
-;
+\p\g
 
 -- ### Delete Grandaunt/Granduncle/Grandaunt-in-law/Granduncle-in-law that can be excluded from the table unique_clean
 delete a
 from actual_and_inf_rel_part2_unique_clean a
-join delete_part2_grandaunt_in_law_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship);
+join delete_part2_grandaunt_in_law_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship)\p\g
 
 -- ### Removing Grandchild/Grandchild-in-law from pairs that have Grandchild
-drop table if exists delete_part2_grandchild_in_law_cases;
+drop table if exists delete_part2_grandchild_in_law_cases\p\g
 create table delete_part2_grandchild_in_law_cases as
 select b.mrn, b.relation_mrn, c.relationship
 from(
@@ -448,16 +448,16 @@ having count(relationship)>1
 )b
 join actual_and_inf_rel_part2_unique_clean c on (b.mrn = c.mrn) and (b.relation_mrn = c.relation_mrn)
 where c.relationship like 'Grandchild/Grandchild%'
-;
+\p\g
 
 -- ### Delete Grandchild/Grandchild-in-law that can be excluded from the table unique_clean
 delete a
 from actual_and_inf_rel_part2_unique_clean a
-join delete_part2_grandchild_in_law_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship);
+join delete_part2_grandchild_in_law_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship)\p\g
 
 
 -- ### Removing Grandnephew/Grandniece/Grandnephew-in-law/Grandniece-in-law from pairs that have Grandnephew/Grandniece
-drop table if exists delete_part2_grandnephew_in_law_cases;
+drop table if exists delete_part2_grandnephew_in_law_cases\p\g
 create table delete_part2_grandnephew_in_law_cases as
 select b.mrn, b.relation_mrn, c.relationship
 from(
@@ -472,17 +472,17 @@ having count(relationship)>1
 )b
 join actual_and_inf_rel_part2_unique_clean c on (b.mrn = c.mrn) and (b.relation_mrn = c.relation_mrn)
 where c.relationship like 'Grandnephew/Grandniece/Grandnephew%'
-;
+\p\g
 
 -- ### Delete Grandnephew/Grandniece/Grandnephew-in-law/Grandniece-in-law that can be excluded from the table unique_clean
 delete a
 from actual_and_inf_rel_part2_unique_clean a
-join delete_part2_grandnephew_in_law_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship);
+join delete_part2_grandnephew_in_law_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship)\p\g
 
 
 
 -- ### Removing Grandparent/Grandparent-in-law from pairs that have Grandparent
-drop table if exists delete_part2_grandparent_in_law_cases;
+drop table if exists delete_part2_grandparent_in_law_cases\p\g
 create table delete_part2_grandparent_in_law_cases as
 select b.mrn, b.relation_mrn, c.relationship
 from(
@@ -497,16 +497,16 @@ having count(relationship)>1
 )b
 join actual_and_inf_rel_part2_unique_clean c on (b.mrn = c.mrn) and (b.relation_mrn = c.relation_mrn)
 where c.relationship like 'Grandparent/Grandparent%'
-;
+\p\g
 
 -- ### Delete Grandparent/Grandparent-in-law that can be excluded from the table unique_clean
 delete a
 from actual_and_inf_rel_part2_unique_clean a
-join delete_part2_grandparent_in_law_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship);
+join delete_part2_grandparent_in_law_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship)\p\g
 
 
 -- ### Removing Great-grandchild/Great-grandchild-in-law from pairs that have Great-grandchild
-drop table if exists delete_part2_greatgrandchild_in_law_cases;
+drop table if exists delete_part2_greatgrandchild_in_law_cases\p\g
 create table delete_part2_greatgrandchild_in_law_cases as
 select b.mrn, b.relation_mrn, c.relationship
 from(
@@ -521,18 +521,18 @@ having count(relationship)>1
 )b
 join actual_and_inf_rel_part2_unique_clean c on (b.mrn = c.mrn) and (b.relation_mrn = c.relation_mrn)
 where c.relationship like 'Great-grandchild/Great-grandchild%'
-;
+\p\g
 
 -- ### Delete Great-grandchild/Great-grandchild-in-law that can be excluded from the table unique_clean
 delete a
 from actual_and_inf_rel_part2_unique_clean a
-join delete_part2_greatgrandchild_in_law_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship);
+join delete_part2_greatgrandchild_in_law_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship)\p\g
 
 
 # Great-grandparent/Great-grandparent-in-law
 
 -- ### Removing Great-grandparent/Great-grandparent-in-law from pairs that have Great-grandparent
-drop table if exists delete_part2_greatgrandparent_in_law_cases;
+drop table if exists delete_part2_greatgrandparent_in_law_cases\p\g
 create table delete_part2_greatgrandparent_in_law_cases as
 select b.mrn, b.relation_mrn, c.relationship
 from(
@@ -547,18 +547,18 @@ having count(relationship)>1
 )b
 join actual_and_inf_rel_part2_unique_clean c on (b.mrn = c.mrn) and (b.relation_mrn = c.relation_mrn)
 where c.relationship like 'Great-grandparent/Great-grandparent%'
-;
+\p\g
 
 -- ### Delete Great-grandparent/Great-grandparent-in-law that can be excluded from the table unique_clean
 delete a
 from actual_and_inf_rel_part2_unique_clean a
-join delete_part2_greatgrandparent_in_law_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship);
+join delete_part2_greatgrandparent_in_law_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship)\p\g
 
 
 # Nephew/Niece/Nephew-in-law/Niece-in-law
 
 -- ### Removing Nephew/Niece/Nephew-in-law/Niece-in-law from pairs that have Nephew/Niece
-drop table if exists delete_part2_nephew_in_law_cases;
+drop table if exists delete_part2_nephew_in_law_cases\p\g
 create table delete_part2_nephew_in_law_cases as
 select b.mrn, b.relation_mrn, c.relationship
 from(
@@ -573,18 +573,18 @@ having count(relationship)>1
 )b
 join actual_and_inf_rel_part2_unique_clean c on (b.mrn = c.mrn) and (b.relation_mrn = c.relation_mrn)
 where c.relationship like 'Nephew/Niece/Nephew%'
-;
+\p\g
 
 -- ### Delete Nephew/Niece/Nephew-in-law/Niece-in-law that can be excluded from the table unique_clean
 delete a
 from actual_and_inf_rel_part2_unique_clean a
-join delete_part2_nephew_in_law_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship);
+join delete_part2_nephew_in_law_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship)\p\g
 
 
 # Sibling/Sibling-in-law
 
 -- ### Removing Sibling/Sibling-in-law from pairs that have Sibling
-drop table if exists delete_part2_sibling_in_law_cases;
+drop table if exists delete_part2_sibling_in_law_cases\p\g
 create table delete_part2_sibling_in_law_cases as
 select b.mrn, b.relation_mrn, c.relationship
 from(
@@ -599,17 +599,17 @@ having count(relationship)>1
 )b
 join actual_and_inf_rel_part2_unique_clean c on (b.mrn = c.mrn) and (b.relation_mrn = c.relation_mrn)
 where c.relationship like 'Sibling/Sibling%'
-;
+\p\g
 
 -- ### Delete Sibling/Sibling-in-law that can be excluded from the table unique_clean
 delete a
 from actual_and_inf_rel_part2_unique_clean a
-join delete_part2_sibling_in_law_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship);
+join delete_part2_sibling_in_law_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship)\p\g
 */
 
 
 -- ### Creating final table 
-drop table if exists actual_and_inf_rel_clean_final;
+drop table if exists actual_and_inf_rel_clean_final\p\g
 create table actual_and_inf_rel_clean_final as
 select distinct mrn
                 , relationship
@@ -627,10 +627,10 @@ select distinct a.relation_mrn as mrn
                 , relationship_specific
 from actual_and_inf_rel_part2_unique_clean a
 join relationships_and_opposites b on a.relationship = b.relationship
-;
+\p\g
 
-create index on actual_and_inf_rel_part2_unique_clean(mrn);
-create index on actual_and_inf_rel_part2_unique_clean(relation_mrn);
+create index on actual_and_inf_rel_part2_unique_clean(mrn)\p\g
+create index on actual_and_inf_rel_part2_unique_clean(relation_mrn)\p\g
 
 /* Testing.  Maybe move this to Step2/7_ */
 
@@ -641,7 +641,7 @@ from actual_and_inf_rel_part2_unique_clean a
 where a.relationship = 'Grandparent'
       and not exists(select 1 from actual_and_inf_rel_part2_unique_clean b 
                      where a.relation_mrn = b.relation_mrn and b.relationship in ( 'Parent', 'Spouse'))
-;                     
+\p\g                     
                      
 
 /* 1.b with derivatives*/
@@ -650,29 +650,29 @@ from actual_and_inf_rel_part2_unique_clean a
      join pt_demog d on a.relation_mrn = d.mrn
      join actual_and_inf_rel_part2_unique_clean b on b.relation_mrn = d.mrn
 where a.relationship = 'Grandparent'
-      and b.relationship in ( 'Parent', 'Spouse');
+      and b.relationship in ( 'Parent', 'Spouse')\p\g
 
 /*
  * DANGER, DANGER, DANGER
  */
-/*2: the Parent is right to left, the Child is left to right; Unify that (right to left) */
-drop table if exists forward_rtl;
+/*2: the Parent is right to left, the Child is left to right\p\g Unify that (right to left) */
+drop table if exists forward_rtl\p\g
 create table forward_rtl as 
 select mrn, relationship, relation_mrn 
 from actual_and_inf_rel_part2_unique_clean 
-where relationship != 'Child';
+where relationship != 'Child'\p\g
 insert into forward_rtl (mrn, relationship, relation_mrn) 
 select relation_mrn, 'Parent', mrn 
 from actual_and_inf_rel_part2_unique_clean 
-where relationship = 'Child';
-delete from forward_rtl where relationship = 'Grandchild';
+where relationship = 'Child'\p\g
+delete from forward_rtl where relationship = 'Grandchild'\p\g
 
 /* 2.a two grandparents one child*/
 select g.*
 from forward_rtl f
 join forward_rtl g on f.mrn = g.mrn and f.relation_mrn != g.relation_mrn
 where f.relationship = 'Grandparent' and g.relationship = 'Grandparent'
-;
+\p\g
 -- zero rows
 
 /* 2.b two parents one child */
@@ -682,7 +682,7 @@ join pt_demog fd on f.relation_mrn = fd.mrn
 join forward_rtl g on f.mrn = g.mrn and f.relation_mrn != g.relation_mrn
 join pt_demog gd on g.relation_mrn = gd.mrn
 where gd.sex = 'M' and fd.sex ='F'
-;
+\p\g
 -- 29 rows
 /* 2.c single parents */
 
@@ -691,7 +691,7 @@ from forward_rtl f
 join pt_demog d on f.relation_mrn = d.mrn
 where relationship = 'Parent'
       and not exists (select 1 from forward_rtl g where g.mrn = f.mrn and g.relation_mrn != f.relation_mrn)
-;      
+\p\g      
 --235 rows
 
 /*
@@ -740,7 +740,7 @@ union all
       join pt_demog d on h.mrn = d.mrn
  )
 )
-select * from tree order by gen;
+select * from tree order by gen\p\g
 
 
 
@@ -792,7 +792,7 @@ select distinct a1.mrn as ego
       and e.sex = 'M'
       and not exists(select 1 from forward_rtl b 
                      where a.relation_mrn = b.mrn and b.relationship = 'Parent')
-;
+\p\g
   
 select a.mrn::int as ego, a.relation_mrn::int as ma, null::int as pa, 1::int as gen
 from actual_and_inf_rel_part2_unique_clean a 
@@ -810,5 +810,5 @@ where a.relationship = 'Parent'
        where c.relationship = 'Parent'
 )       
 select * from tree order by gen desc 
-;
+\p\g
 */

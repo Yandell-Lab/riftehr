@@ -1,3 +1,4 @@
-drop table if exists family;
-create table family (id int, member text);
-\copy family from ~/gits/github/ds-ehr/data/family.ids csv header
+-- done in runner
+-- drop table if exists family\p\g
+-- create table family (id int, member text)\p\g
+-- \copy family from ~/gits/github/ds-ehr/data/family.ids csv header
