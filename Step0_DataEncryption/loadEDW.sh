@@ -1,4 +1,10 @@
 #!/usr/bin/bash -e
+if [[ $@ < 2 ]]
+then
+    printf "Need data dir and git root dir\n"
+    printf "usage: %s <datadir> <gitdir>\n" $(basename $0)
+fi
+
 DATADIR=$1; shift
 STEPDIR=$1; shift
 
@@ -12,7 +18,7 @@ for f in $ptfile $ecfile $dgfile $rlfile; do
     if [[ ! -e $f ]]; then echo cannot find patient file $f; exit 2; fi
 done
 
-psql --username=postgres --host=csgsdb.chpc.utah.edu --dbname=postgres <<EOF
+psql --username=postgres --host=csgsdb --dbname=postgres <<EOF
 drop database riftehr;
 create database riftehr;
 \c riftehr
@@ -23,6 +29,6 @@ set search_path = cell,run,public;
 \copy  x_pt_processed       from  $ptfile   csv  delimiter  '|'  header
 \copy  x_ec_processed       from  $ecfile   csv  delimiter  '|'  header
 \copy  pt_demog             from  $dgfile   csv  delimiter  '|'  header
-\copy  relationship_lookup  from  $rlfile   csv  header
+\copy  relationship_lookup  from  $rlfile   csv  delimiter  '|'  header
 EOF
 

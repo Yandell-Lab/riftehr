@@ -1,4 +1,11 @@
 #!/usr/bin/bash -e
+if [[ $@ < 2 ]]
+then
+    printf "Need data dir and git root dir\n"
+    printf "(This is exected to be called after \"%s/loadEDW.sh\")\n" $(dirname $0)
+    printf "usage: %s <datadir> <gitdir>\n" $(basename $0)
+fi
+
 ml julia/1.7
 ml gcc/4.8.5
 
