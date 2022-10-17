@@ -17,10 +17,10 @@ import sys
 import os
 import networkx.algorithms.isomorphism as iso
 
-inf = sys.argv[1]
-ouf = sys.argv[2]
-
-reader = csv.reader(open(inf, 'r'), delimiter=',')
+infile = sys.argv[1]
+outfile = sys.argv[2]
+print(F"gen families:  reading {infile}")
+reader = csv.reader(open(infile, 'r'), delimiter=',')
 #header = reader.next() // no headers in \copy output
 
 a = []
@@ -28,8 +28,8 @@ b = []
 rel = []
 all_relationships = []
 for line in reader:
-    a.append(int(line[0]))
-    b.append(int(line[2]))
+    a.append(line[0])
+    b.append(line[2])
     rel.append(line[1])
 
 for i in range(len(a)):
@@ -45,7 +45,7 @@ for i in range(len(all_relationships)):
 comp = (u.subgraph(c) for c in nx.connected_components(u))
 comp = sorted(list(comp), key = len, reverse = True)
 
-outfh = open(ouf, 'w')
+outfh = open(outfile, 'w')
 writer = csv.writer(outfh)
 writer.writerow(['family_id', 'individual_id'])
 for family_id in range(len(comp)):
