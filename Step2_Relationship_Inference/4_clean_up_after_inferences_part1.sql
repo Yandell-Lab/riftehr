@@ -18,13 +18,13 @@ where a.mrn = b.mrn and a.relationship = b.relationship and a.relation_mrn = b.r
 --### Duplicate table actual_and_inf_rel_part1_unique and name it actual_and_inf_rel_part1_unique_clean
 drop table if exists actual_and_inf_rel_part1_unique_clean\p\g
 create table actual_and_inf_rel_part1_unique_clean as
-select *, 
+select distinct *, 
        cast(null as int) as conflicting_provided_relationship,
        cast(null as varchar(25)) as relationship_specific
 from actual_and_inf_rel_part1_unique\p\g
 
 --### Add indexes
-create unique index on actual_and_inf_rel_part1_unique_clean(mrn,relation_mrn)\p\g
+create index on actual_and_inf_rel_part1_unique_clean(mrn,relation_mrn)\p\g
 
 --### Identifying mrn = to relation_mrn (Self) <--- 0 cases! If not = 0, exclude those
 -- select *
@@ -48,131 +48,38 @@ having count(relationship)>1\p\g
 --### Create new column conflicting_provided_relationship at actual_and_inf_rel_part1_unique_clean
 
 --### Tagging conflicting provided relationships
-update actual_and_inf_rel_part1_unique_clean a
-join provided_relationships_conflicting b on (a.mrn = b. mrn) and (a.relation_mrn = b.relation_mrn)
-set conflicting_provided_relationship = 1
-where provided_relationship =1\p\g
 */
+
+drop table  provided_relationships_conflicting\p\g
+create table provided_relationships_conflicting as
+select mrn, relation_mrn, array_agg(relationship order by relationship ) as ships
+from actual_and_inf_rel_part1_unique_clean a
+where provided_relationship = 1
+group by mrn, relation_mrn
+having count(relationship) > 1
+
+update actual_and_inf_rel_part1_unique_clean a
+set conflicting_provided_relationship = 1
+from  provided_relationships_conflicting b
+where (a.mrn = b. mrn) 
+      and (a.relation_mrn = b.relation_mrn)
+      and a.provided_relationship = 1\p\g
 
 --### Create new column relationship_specific at actual_and_inf_rel_part1_unique_clean
 
 --### Identifying and updating PROVIDED mothers for not conflicting cases
 update actual_and_inf_rel_part1_unique_clean as a
-SET relationship_specific = 'Mother'
-from pt_matches as b, relationship_lookup as c
-where a.mrn = b.mrn and a.relation_mrn = b.relation_mrn
-      and b.relationship = c.relationship
-      and a.relationship = 'Parent' 
-      and c.relationship_name = 'Mother'
-      and a.provided_relationship = 1 
+SET relationship_specific = case when a.relationship = 'Parent' and d.sex =  'F' then 'Mother'
+                                 when a.relationship = 'Parent' and d.sex =  'M' then 'Father'
+                                 when a.relationship = 'Aunt/Uncle' and d.sex =  'F' then 'Aunt'
+                                 when a.relationship = 'Aunt/Uncle' and d.sex =  'M' then 'Uncle'
+                                 end
+from pt_demog d
+where a.relation_mrn = d.mrn
       and a.conflicting_provided_relationship is NULL 
       and a.relationship_specific is NULL\p\g
 
 --### Identifying and updating PROVIDED fathers for not conflicting cases
-
-update actual_and_inf_rel_part1_unique_clean a
-set relationship_specific = 'Father'
-from pt_matches as b, relationship_lookup as c
-where a.mrn = b.mrn and a.relation_mrn = b.relation_mrn
-      and b.relationship = c.relationship
-      and a.relationship = 'Parent' 
-      and c.relationship_name = 'Father' 
-      and a.provided_relationship = 1 
-      and a.conflicting_provided_relationship is NULL and a.relationship_specific is NULL\p\g
-
-
---### Identifying and updating PROVIDED aunts for not conflicting cases
-update actual_and_inf_rel_part1_unique_clean a
-set relationship_specific = 'Aunt'
-from pt_matches as b, relationship_lookup c
-where a.mrn = b.mrn 
-      and a.relation_mrn = b.relation_mrn
-      and b.relationship = c.relationship
-      and a.relationship = 'Aunt/Uncle' 
-      and c.relationship_name = 'Aunt'
-      and a.provided_relationship = 1 
-      and a.conflicting_provided_relationship is NULL 
-      and a.relationship_specific is NULL\p\g
-
-
---### Identifying all 'Parent' that are = MOTHER by gender 
-update actual_and_inf_rel_part1_unique_clean x
-set relationship_specific = 'Mother'
-from (select d.relation_mrn from
-             (select c.relation_mrn, count(c.relation_mrn) from 
-                     (select distinct a.relation_mrn, b.SEX 
-                      from actual_and_inf_rel_part1_unique_clean a
-                      join pt_demog b on a.relation_mrn = b.mrn
-                      where a.relationship = 'Parent' 
-                            and a.relationship_specific is NULL
-                     ) as c
-              group by c.relation_mrn
-              having count(c.relation_mrn) = 1 
-              ) d
-       join pt_demog e on d.relation_mrn = e.mrn
-       where e.SEX = 'F'
-      ) as y 
-where x.relation_mrn = y.relation_mrn
-      and x.relationship = 'Parent' 
-      and x.relationship_specific is NULL\p\g
-
-/* OR
-
-
-update actual_and_inf_rel_part1_unique_clean  a
-set relationship_specific = case when d.sex = 'F' then 'Mother'
-                                 when d.sex = 'M' then 'Father'
-                            end
-from pt_demog d
-where a.relation_mrn = d.mrn\p\g
-
-
-*/
---### Identifying all "Parent" that are = FATHER by gender 
-update actual_and_inf_rel_part1_unique_clean x
-SET relationship_specific = 'Father' 
-from ( select d.relation_mrn
-       from ( select c.relation_mrn, count(c.relation_mrn)
-              from ( select distinct a.relation_mrn, b.SEX
-                     from actual_and_inf_rel_part1_unique_clean a
-                     join pt_demog b on a.relation_mrn = b.mrn
-                     where a.relationship = 'Parent' 
-                           and a.relationship_specific is NULL
-                    ) c
-                    group by c.relation_mrn
-                    having count(c.relation_mrn) =1 
-             ) d
-             join pt_demog e on d.relation_mrn = e.mrn
-             where e.SEX = 'M'
-      ) y
-where x.relation_mrn = y.relation_mrn
-      and x.relationship = 'Parent' 
-      and x.relationship_specific is NULL\p\g
-/*
-*  See "OR" above
-*/
---### Identifying all "Aunt/Uncle" that are = Aunt by gender 
--- update actual_and_inf_rel_part1_unique_clean x
--- join (
--- select d.relation_mrn
--- from (
--- select c.relation_mrn, count(c.relation_mrn)
--- from (
--- select distinct a.relation_mrn, b.SEX
--- from actual_and_inf_rel_part1_unique_clean a
--- join pt_demog b on (a.relation_mrn = b.mrn)
--- where a.relationship = 'Aunt/Uncle' and a.relationship_specific is NULL
--- ) c
--- group by c.relation_mrn
--- having count(c.relation_mrn) =1 
--- ) d
--- join pt_demog e on d.relation_mrn = e.mrn
--- where e.SEX = 'F'
--- )y on x.relation_mrn = y.relation_mrn
--- SET x.relationship_specific = 'Aunt' 
--- where x.relationship = 'Aunt/Uncle' and x.relationship_specific is NULL\p\g
-
---### Identifying all "Aunt/Uncle" that are = Uncle by gender 
 
 /*
 update actual_and_inf_rel_part1_unique_clean x
