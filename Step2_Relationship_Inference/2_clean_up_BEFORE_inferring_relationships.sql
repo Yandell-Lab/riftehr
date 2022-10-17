@@ -18,34 +18,37 @@ join relationship_lookup b on a.relationship = b.relationship
 join pt_demog child on child.mrn = a.mrn
 join pt_demog parent on parent.mrn = a.relation_mrn
 \p\g
-/* should get to here*/
--- ##### exclude: 1 = delete / 2 = flip relationship
+##### exclude: 1 = delete / 2 = flip relationship
+\p\r
 
--- # exclude annotated cases with relationships that match multiple people (20+)
+-- -- # exclude annotated cases with relationships that match multiple people (20+)
+-- UT: no such table: exclude_MRNs_before_inferences
 -- update relations_matched_mrn_with_age_dif a
 -- set exclude = "1"
 -- from exclude_MRNs_before_inferences b
 -- where a.relation_mrn = b.relation_mrn
 -- \p\g
-  
+
 -- update relations_matched_mrn_with_age_dif a
 -- set exclude = "1"
 -- from exclude_MRNs_before_inferences b
 -- where a.mrn = b.relation_mrn
 -- \p\g
-  
--- # exclude patients with conflicting year of birth 
--- update relations_matched_mrn_with_age_dif a
--- set exclude = 1
--- from ((select distinct t1.mrn, t1.relation_mrn, count(t1.age_dif) as cnt
---      from (select distinct mrn, relation_mrn, age_dif
---           from relations_matched_mrn_with_age_dif
---           group by mrn, relation_mrn, age_dif
---           ) t1
---      group by t1.mrn, t1.relation_mrn)
--- having count(t1.age_dif) >1
--- ) b
--- where a.mrn = b.mrn and a.relation_mrn = b.relation_mrn and 
+
+#### exclude patients with conflicting year of birth
+\p\r
+
+update relations_matched_mrn_with_age_dif a
+set exclude = 1
+from ( select distinct t1.mrn, t1.relation_mrn, count(t1.age_dif) as cnt
+       from (select distinct mrn, relation_mrn, age_dif
+            from relations_matched_mrn_with_age_dif
+            group by mrn, relation_mrn, age_dif
+            ) t1
+       group by t1.mrn, t1.relation_mrn
+       having count(t1.age_dif) >1
+) b
+where a.mrn = b.mrn and a.relation_mrn = b.relation_mrn
 \p\g
 
 
