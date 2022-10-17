@@ -18,10 +18,11 @@ for f in $ptfile $ecfile $dgfile $rlfile; do
     if [[ ! -e $f ]]; then echo cannot find patient file $f; exit 2; fi
 done
 
-psql --username=postgres --host=csgsdb --dbname=postgres <<EOF
+psql --user=postgres --host=csgsdb --dbname=postgres <<EOF
 drop database riftehr;
 create database riftehr;
 \c riftehr
+set search_path = cell, public;
 \i $STEPDIR/Step0_DataEncryption/clinical_relationships_v3_2022-08-11.sql3.sql
 \i $STEPDIR/Step0_DataEncryption/baseDDL.sql
 
