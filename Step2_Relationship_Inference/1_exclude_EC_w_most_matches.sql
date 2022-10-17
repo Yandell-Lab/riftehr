@@ -18,13 +18,12 @@ create table matches_wo_spouse as
 select a.mrn
        , l.relationship_group
        , a.relation_mrn
-       , array_agg(a.matched_path) as matched_path
+       , a.matched_path
 from pt_matches a
 join relationship_lookup l on trim(a.relationship) = trim(l.relationship)
 where l.relationship_group != ''
       and trim(l.relationship_group) != 'Spouse'
       and a.mrn != a.relation_mrn
-group by a.mrn,a.relation_mrn, l.relationship_group
 \p\g
 
 --### Exclude emergency contacts with most matches 
@@ -35,5 +34,5 @@ select relation_mrn
 from matches_wo_spouse m
 join pt_demog demog on demog.mrn = relation_mrn
 group by relation_mrn
-having count(distinct m.mrn) >= 2
+having count(distinct m.mrn) >= 20
 \p\g
