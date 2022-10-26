@@ -9,3 +9,8 @@ drop table if exists x_pt_processed;
 create table x_pt_processed (
 mrn text, firstname text, lastname text, phonenumber text, zipcode text
 );
+
+drop table if exists match_priority;
+create table x_match_priority (
+match text, ordinal int
+);
