@@ -20,4 +20,6 @@ where relationship != 'Spouse'
       and relationship != 'Nephew/Niece/Nephew-in-law/Niece-in-law' 
       and relationship != 'Sibling/Sibling-in-law'
 \p\g
-
+/*
+ * all_relationships_to_generate_family_id is copied to file in runStep.sh
+ */
