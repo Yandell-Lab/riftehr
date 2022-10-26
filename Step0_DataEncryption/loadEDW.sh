@@ -13,9 +13,10 @@ ptfile=${DATADIR}/patient_edw.csv;
 ecfile=${DATADIR}/emcon_edw.csv;
 dgfile=${DATADIR}/demog_edw.csv;
 rlfile=${DATADIR}/localMatchedRelTypes ## our take on "relationship_lookup"
+mofile=${DATADIR}/matchTypeOrder.csv ## our take on "match_path" value
 
-for f in $ptfile $ecfile $dgfile $rlfile; do
-    if [[ ! -e $f ]]; then echo cannot find patient file $f; exit 2; fi
+for f in $ptfile $ecfile $dgfile $rlfile $mofile; do
+    if [[ ! -e $f ]]; then echo cannot find data file $f; exit 2; fi
 done
 
 psql --user=postgres --host=csgsdb --dbname=postgres <<EOF
@@ -31,5 +32,6 @@ set search_path = cell,run,public;
 \copy  x_ec_processed       from  $ecfile   csv  delimiter  '|'  header
 \copy  pt_demog             from  $dgfile   csv  delimiter  '|'  header
 \copy  relationship_lookup  from  $rlfile   csv  delimiter  '|'  header
+\copy  x_match_priority     from  $mofile   csv  delimiter  '|'
 EOF
 
