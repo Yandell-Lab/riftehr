@@ -57,13 +57,15 @@ from actual_and_inf_rel_part1_unique_clean a
 where provided_relationship = 1
 group by mrn, relation_mrn
 having count(relationship) > 1
+\p\g
 
 update actual_and_inf_rel_part1_unique_clean a
 set conflicting_provided_relationship = 1
 from  provided_relationships_conflicting b
 where (a.mrn = b. mrn) 
       and (a.relation_mrn = b.relation_mrn)
-      and a.provided_relationship = 1\p\g
+      and a.provided_relationship = 1
+\p\g
 
 --### Create new column relationship_specific at actual_and_inf_rel_part1_unique_clean
 
@@ -77,41 +79,7 @@ SET relationship_specific = case when a.relationship = 'Parent' and d.sex =  'F'
 from pt_demog d
 where a.relation_mrn = d.mrn
       and a.conflicting_provided_relationship is NULL 
-      and a.relationship_specific is NULL\p\g
-
---### Identifying and updating PROVIDED fathers for not conflicting cases
-
-/*
-update actual_and_inf_rel_part1_unique_clean x
-join (
-select d.relation_mrn
-from (
-select c.relation_mrn, count(c.relation_mrn)
-from (
-select distinct a.relation_mrn, b.SEX
-from actual_and_inf_rel_part1_unique_clean a
-join pt_demog b on (a.relation_mrn = b.mrn)
-where a.relationship = 'Aunt/Uncle' and a.relationship_specific is NULL
-) c
-group by c.relation_mrn
-having count(c.relation_mrn) =1 
-) d
-join pt_demog e on d.relation_mrn = e.mrn
-where e.SEX = 'M'
-)y on x.relation_mrn = y.relation_mrn
-SET x.relationship_specific = 'Uncle' 
-where x.relationship = 'Aunt/Uncle' and x.relationship_specific is NULL\p\g
-*/
-
-
--- my way
-update actual_and_inf_rel_part1_unique_clean as a
-set relationship_specific = case when e.sex = 'M' then 'Uncle'
-                            when e.sex = 'F' then 'Aunt'
-                            end
-from pt_demog e
-where a.relationship = 'Aunt/Uncle'
-      and a.relation_mrn = e.mrn
+      and a.relationship_specific is NULL
 \p\g
 
 --### Removing Parent/Aunt/Uncle from pairs that have Parent or Aunt/Uncle (count = 2) 
@@ -321,54 +289,56 @@ delete from actual_and_inf_rel_part1_unique_clean a
 using delete_part1_grandparent_in_law_cases b
 where (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship)\p\g
 
-/* UT: none in the EDW data export
+
 --### Removing Great-grandchild/Great-grandchild-in-law from pairs that have Great-grandchild
-create table delete_part1_greatgrandchild_in_law_cases
+drop table if exists delete_part1_greatgrandchild_in_law_cases\p\g
+create table delete_part1_greatgrandchild_in_law_cases as
 select b.mrn, b.relation_mrn, c.relationship
-from(
-select mrn, relation_mrn, count(relationship)
-from (
-select distinct mrn, relationship, `relation_mrn`
-from actual_and_inf_rel_part1_unique_clean
-where relationship ='Great-grandchild' or relationship like 'Great-grandchild/Great-grandchild%'
-)a
-group by  mrn, relation_mrn
-having count(relationship)>1
-)b
+from ( select mrn, relation_mrn, count(relationship)
+       from ( select distinct mrn, relationship, relation_mrn
+              from actual_and_inf_rel_part1_unique_clean
+              where relationship ='Great-grandchild' or relationship like 'Great-grandchild/Great-grandchild%'
+            )a
+       group by  mrn, relation_mrn
+       having count(relationship)>1
+     ) b
 join actual_and_inf_rel_part1_unique_clean c on (b.mrn = c.mrn) and (b.relation_mrn = c.relation_mrn)
 where c.relationship like 'Great-grandchild/Great-grandchild%'
 \p\g
 
 --### Delete Great-grandchild/Great-grandchild-in-law that can be excluded from the table unique_clean
-delete a
-from actual_and_inf_rel_part1_unique_clean a
-join delete_part1_greatgrandchild_in_law_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship)\p\g
+delete from actual_and_inf_rel_part1_unique_clean a
+using delete_part1_greatgrandchild_in_law_cases b
+where (a.mrn = b.mrn) 
+     and (a.relation_mrn = b.relation_mrn) 
+     and (a.relationship = b.relationship)
+\p\g
 
-
-# Great-grandparent/Great-grandparent-in-law
+--# Great-grandparent/Great-grandparent-in-law
 
 --### Removing Great-grandparent/Great-grandparent-in-law from pairs that have Great-grandparent
-create table delete_part1_greatgrandparent_in_law_cases
+drop table if exists delete_part1_greatgrandparent_in_law_cases
+\p\g
+create table delete_part1_greatgrandparent_in_law_cases as
 select b.mrn, b.relation_mrn, c.relationship
-from(
-select mrn, relation_mrn, count(relationship)
-from (
-select distinct mrn, relationship, `relation_mrn`
-from actual_and_inf_rel_part1_unique_clean
-where relationship ='Great-grandparent' or relationship like 'Great-grandparent/Great-grandparent%'
-)a
-group by  mrn, relation_mrn
-having count(relationship)>1
-)b
+from (select mrn, relation_mrn, count(relationship)
+      from ( select distinct mrn, relationship, relation_mrn
+             from actual_and_inf_rel_part1_unique_clean
+             where relationship ='Great-grandparent' or relationship like 'Great-grandparent/Great-grandparent%'
+           ) a
+      group by  mrn, relation_mrn
+      having count(relationship)>1
+     ) b
 join actual_and_inf_rel_part1_unique_clean c on (b.mrn = c.mrn) and (b.relation_mrn = c.relation_mrn)
 where c.relationship like 'Great-grandparent/Great-grandparent%'
 \p\g
 
 --### Delete Great-grandparent/Great-grandparent-in-law that can be excluded from the table unique_clean
-delete a
-from actual_and_inf_rel_part1_unique_clean a
-join delete_part1_greatgrandparent_in_law_cases b on (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship)\p\g
-*/
+delete from actual_and_inf_rel_part1_unique_clean a
+using delete_part1_greatgrandparent_in_law_cases b
+where (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship)
+\p\g
+
 
 -- # Nephew/Niece/Nephew-in-law/Niece-in-law
 
@@ -419,6 +389,7 @@ where (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship 
 
 
 --### Creating table to run new script
+--UT: What "new script"?
 drop table if exists patient_relations_w_opposites_part2\p\g
 create table patient_relations_w_opposites_part2 as 
 select distinct mrn, relationship, relation_mrn
