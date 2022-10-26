@@ -1,7 +1,7 @@
 -- ###Flip and clean up step
 -- # Create table to be updated 
 
-drop table if exists relations_matched_mrn_with_age_dif\p\g
+drop table if exists relations_matched_mrn_with_age_dif \p\g
 create table relations_matched_mrn_with_age_dif
 as
 select distinct
@@ -12,7 +12,8 @@ select distinct
        child.year as DOB_empi,
        parent.year as DOB_matched,
        child.year - parent.year as age_dif,
-       cast(null as int) as exclude
+       cast(null as int) as exclude,
+       cast(null as text) as reason /* utah debug addition*/
 from pt_matches a
 join relationship_lookup b on a.relationship = b.relationship
 join pt_demog child on child.mrn = a.mrn
@@ -38,8 +39,12 @@ join pt_demog parent on parent.mrn = a.relation_mrn
 #### exclude patients with conflicting year of birth
 \p\r
 
+/* WTF: 
+ * does nothing, extraordinarily complex and done again later in "Parent" and "Child" stanza below
+ */
+
 update relations_matched_mrn_with_age_dif a
-set exclude = 1
+set exclude = 1, reason = 'parental age'
 from ( select distinct t1.mrn, t1.relation_mrn, count(t1.age_dif) as cnt
        from (select distinct mrn, relation_mrn, age_dif
             from relations_matched_mrn_with_age_dif
@@ -52,45 +57,48 @@ where a.mrn = b.mrn and a.relation_mrn = b.relation_mrn
 \p\g
 
 
--- # exclude SELF
+/*# exclude SELF*/
 update relations_matched_mrn_with_age_dif a
-set exclude = 1
-where a.mrn = a.relation_mrn\p\g
+set exclude = 1, reason = 'mrn = relation_mrn'
+where a.mrn = a.relation_mrn
+\p\g
 
-
--- # exclude PARENTS with age difference BETWEEN -10 AND 10 years
+/* # exclude PARENTS with age difference BETWEEN -10 AND 10 years*/
 update relations_matched_mrn_with_age_dif a
-set exclude = 1
-where a.relationship_group = 'Parent' and a.age_dif between -10 and 10\p\g
+set exclude = 1, reason = 'parental age less the 11'
+where a.relationship_group = 'Parent' and abs(a.age_dif) < 11
+\p\g
 
--- # exclude GRANDPARENTS with age difference BETWEEN -20 AND 20 years
+/*-- # exclude GRANDPARENTS with age difference BETWEEN -20 AND 20 years*/
 update relations_matched_mrn_with_age_dif a
-set exclude = 1
-where a.relationship_group = 'Grandparent' and a.age_dif between -20 and 20\p\g
+set exclude = 1, reason = 'grandparental age < 21'
+where a.relationship_group = 'Grandparent' and abs(a.age_dif) < 21\
+\p\g
 
--- # exclude CHILD with age difference BETWEEN -10 AND 10 years
+/*-- # exclude CHILD with age difference BETWEEN -10 AND 10 years*/
 update relations_matched_mrn_with_age_dif a
-set exclude =  1
-where a.relationship_group = 'Child' and a.age_dif between -10 and 10\p\g
+set exclude =  1, reason = 'child age less than 11'
+where a.relationship_group = 'Child' and abs(a.age_dif) < 11
+\p\g
+/*-- # exclude GRANDCHILD with age difference BETWEEN -20 AND 20 years*/
+update relations_matched_mrn_with_age_dif a
+set exclude = 1, reason = 'grandchild too young'
+where a.relationship_group = 'Grandchild' and abs(a.age_dif) < 21\p\g
 
--- # exclude GRANDCHILD with age difference BETWEEN -20 AND 20 years
+/*-- #exclude cases with year of birth <1900*/
 update relations_matched_mrn_with_age_dif a
-set exclude = 1
-where a.relationship_group = 'Grandchild' and a.age_dif between -20 and 20\p\g
-
--- #exclude cases with year of birth <1900
-update relations_matched_mrn_with_age_dif a
-set exclude = 1
+set exclude = 1, reason = 'ancient data'
 where DOB_empi < 1900 or DOB_matched <1900\p\g
 
--- # only consider matches that match on at least 2 items (first name, last name, phone, ZIP code)
+/*-- # only consider matches that match on at least 2 items (first name, last name, phone, ZIP code)*/
 drop table if exists pt_matches_clean\p\g
 create table pt_matches_clean as
 select mrn, relationship, relation_mrn, array_remove(array_remove(matched_path, 'phone'), 'zip') as matched_path
 from pt_matches
-where array_length(matched_path,1) > 1\p\g
+where array_length(matched_path,1) > 1
+\p\g
 
--- # create final table of matched relations
+/*-- # create final table of matched relations*/
 drop table if exists patient_relations_w_opposites\p\g
 create table patient_relations_w_opposites as
 select distinct mrn, relationship, relation_mrn
@@ -101,37 +109,55 @@ from pt_matches_clean a
 join relationship_lookup b on a.relationship = b.relationship_group\p\g
 
 
--- # flip PARENTS with age difference <-10
+/*-- # flip PARENTS with age difference <-10*/
 update relations_matched_mrn_with_age_dif a
-set exclude = 2
-where a.relationship_group = 'Parent' and a.age_dif <-10 and a.exclude is NULL\p\g
+set exclude = 2, reason = 'Parent flip'
+where a.relationship_group = 'Parent' and a.age_dif <-10 and a.exclude is NULL
+\p\g
 
--- # flip GRANDPARENTS with age difference <-20
+/*-- # flip GRANDPARENTS with age difference <-20*/
 update relations_matched_mrn_with_age_dif a
-set exclude = 2
-where a.relationship_group = 'Grandparent' and a.age_dif <-20 and a.exclude is NULL\p\g
+set exclude = 2, reason = 'grandparents flip'
+where a.relationship_group = 'Grandparent' and a.age_dif <-20 and a.exclude is NULL
+\p\g
 
--- # flip CHILD with age difference >10
+/*-- # flip CHILD with age difference >10*/
 update relations_matched_mrn_with_age_dif a
-set exclude = 2
-where a.relationship_group = 'Child' and a.age_dif >10 and a.exclude is NULL\p\g
+set exclude = 2, reason = 'child flip'
+where a.relationship_group = 'Child' and a.age_dif >10 and a.exclude is NULL
+\p\g
 
--- # flip GRANDCHILD with age difference >20
+/*-- # flip GRANDCHILD with age difference >20*/
 update relations_matched_mrn_with_age_dif a
-set exclude = 2
-where a.relationship_group = 'Grandchild' and a.age_dif >20 and a.exclude is NULL\p\g
+set exclude = 2, reason = 'grandchild flip'
+where a.relationship_group = 'Grandchild' and a.age_dif > 20 and a.exclude is NULL
+\p\g
 
--- ### Creating clean relations_matched_empi
+/* the troubles I've seen */
+select exclude, reason, count(*) 
+from relations_matched_mrn_with_age_dif 
+group by exclude, reason 
+order by exclude, reason
+\p\g
 
--- # Flipping relationships 
+
+/*-- ### Creating clean relations_matched_empi*/
+
+/*-- # Flipping relationships */
 drop table if exists relations_matched_mrn_fixed_flipped_rel\p\g
 create table relations_matched_mrn_fixed_flipped_rel as
-select distinct a.mrn, b.opposite_relationship_group as relationship, relation_mrn, matched_path, DOB_empi, DOB_matched, age_dif
+select distinct a.mrn
+                , b.opposite_relationship_group as relationship
+                , relation_mrn
+                , matched_path
+                , DOB_empi
+                , DOB_matched
+                , age_dif
 from relations_matched_mrn_with_age_dif a
 join relationship_lookup b on a.relationship_group = b.relationship_group
 where a.exclude = 2\p\g
 
--- # Creating relations_matched_clean
+/*-- # Creating relations_matched_clean*/
 drop table if exists relations_matched_clean\p\g
 create table relations_matched_clean as
 select distinct a.mrn, a.relationship_group as relationship, relation_mrn, matched_path, DOB_empi, DOB_matched, age_dif
@@ -143,7 +169,13 @@ from relations_matched_mrn_fixed_flipped_rel b
 \p\g
 
 -- # Creating patient_relations_w_opposites_clean
-drop table if exists patient_relations_w_opposites_clean\p\g
+/* the affect is to have the elder person in mrn slot, younger in relation_mrn 
+ * and rename relationship to match.
+ * 
+ * This is also the point at which we're down to id-relation-id.  All (else) is lost 
+ */
+drop table if exists patient_relations_w_opposites_clean
+\p\g
 create table patient_relations_w_opposites_clean as 
 select distinct mrn, relationship, relation_mrn
 from relations_matched_clean where dob_empi <= dob_matched
@@ -151,4 +183,14 @@ union
 select distinct a.relation_mrn as mrn, b.opposite_relationship_group as relationship, a.mrn as relation_mrn
 from relations_matched_clean a
 join relationship_lookup b on a.relationship = b.relationship_group and a.dob_empi > a.dob_matched
+\p\g
+
+
+/* troublesome children */
+create table troubled_kids as
+select a.relation_mrn as child, a.mrn as par1, b.mrn as par2, a.relationship
+from patient_relations_w_opposites_clean a 
+     join patient_relations_w_opposites_clean b on a.relation_mrn =b.relation_mrn and a.mrn > b.mrn and a.relationship = b.relationship
+     join pt_demog d on a.mrn = d.mrn join pt_demog e on b.mrn = e.mrn and d.sex = e.sex
+where a.relationship in('Child', 'Mother', 'Father', 'Parent')
 \p\g
