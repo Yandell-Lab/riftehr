@@ -18,12 +18,21 @@ mofile=${DATADIR}/matchTypeOrder.csv ## our take on "match_path" value
 for f in $ptfile $ecfile $dgfile $rlfile $mofile; do
     if [[ ! -e $f ]]; then echo cannot find data file $f; exit 2; fi
 done
+for f in $ptfile $ecfile $dgfile $rlfile $mofile; do
+    wc -l $f
+done
 
-psql --user=postgres --host=csgsdb --dbname=postgres <<EOF
-drop database riftehr;
+psql --user=cell --host=csgsdb --dbname=postgres <<EOF
+select session_user;
+select current_user;
+
+drop database if exists riftehr;
 create database riftehr;
 \c riftehr
-set search_path = cell, public;
+
+create schema cell;
+create schema run;
+set search_path = cell, run, public;
 \i $STEPDIR/Step0_DataEncryption/clinical_relationships_v3_2022-08-11.sql3.sql
 \i $STEPDIR/Step0_DataEncryption/baseDDL.sql
 
@@ -33,5 +42,9 @@ set search_path = cell,run,public;
 \copy  pt_demog             from  $dgfile   csv  delimiter  '|'  header
 \copy  relationship_lookup  from  $rlfile   csv  delimiter  '|'  header
 \copy  x_match_priority     from  $mofile   csv  delimiter  '|'
+
+\i $STEPDIR/Step0_DataEncryption/1.initialCounts.sql
+
 EOF
+
 
