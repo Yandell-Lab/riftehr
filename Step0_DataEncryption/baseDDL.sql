@@ -14,3 +14,15 @@ drop table if exists match_priority;
 create table x_match_priority (
 match text, ordinal int
 );
+
+/* used in pedigree filling, post Step6*/
+create or replace function fakename() 
+returns text 
+as $$ 
+declare 
+    nm text; 
+begin 
+    select '__' || nextval('namer')::text into nm; 
+    return nm;
+end;
+$$ language plpgsql;
