@@ -4,7 +4,9 @@
 
 /* Brutal, I know*/
 delete from x_ec_processed x
-where ec_relationship in ('Neighbor','Unknown','None Entered','In-Law','Friend','Case Worker','Other','Attorney','Employee','Legal Guardian')
+where ec_relationship in ('Neighbor','Unknown','None Entered','In-Law'
+                          ,'Friend','Case Worker','Other','Attorney'
+                          ,'Employee','Legal Guardian')
       or ec_relationship is null
 \p\g
 
@@ -20,6 +22,7 @@ create table x_fn_cnt as
 select a.FirstName, count(distinct MRN) as cnt
 from x_fn_distinct a
 group by a.FirstName
+/*having count(distinct MRN) > 1*/
 \p\g
 create unique index xfncnt on x_fn_cnt(firstname)\p\g
 
@@ -32,13 +35,15 @@ create unique index xfnunique on x_fn_unique(firstname)\p\g
 
 drop table if exists x_cumc_patient_matched\p\g
 create table x_cumc_patient_matched as 
-select distinct a.mrn_1::text as empi_or_mrn
+select distinct a.mrn_1 as empi_or_mrn
        , a.ec_relationship as relationship
        , b.mrn::text as relation_empi_or_mrn
        , 'first'::text as matched_path
 from x_ec_processed a
-join x_fn_unique b on a.ec_firstname = b.firstname\p\g
-
+join x_fn_unique b on a.ec_firstname = b.firstname
+--UTAH
+where a.mrn_1 != b.mrn
+\p\g
 
 -- map LastName
 create table x_ln_distinct as
@@ -63,7 +68,17 @@ drop table if exists lastname_peek\p\g
 create table lastname_peek as 
 select distinct a.MRN_1 as empi_or_mrn, a.EC_Relationship as relationship, b.MRN as relation_empi_or_mrn, 'last' as matched_path
 from x_ec_processed a
-join x_ln_unique b on a.EC_LastName = b.LastName\p\g
+join x_ln_unique b on a.EC_LastName = b.LastName
+\p\g
+
+insert into x_cumc_patient_matched
+select distinct a.MRN_1 as empi_or_mrn, a.EC_Relationship as relationship, b.MRN as relation_empi_or_mrn, 'last'::text as matched_path
+from x_ec_processed a
+join x_ln_unique b on a.EC_LastName = b.LastName
+--UTAH
+where a.mrn_1 != b.mrn
+\p\g
+
 drop table if exists x_ln_distinct, x_ln_cnt, x_ln_unique\p\g
 
 -- map Phone
@@ -87,7 +102,10 @@ create unique index on x_ph_unique(PhoneNumber)\p\g
 insert into x_cumc_patient_matched
 select distinct a.MRN_1 as empi_or_mrn, a.EC_Relationship as relationship, b.MRN as relation_empi_or_mrn, 'phone'::text as matched_path
 from x_ec_processed a
-join x_ph_unique b on a.EC_PhoneNumber = b.PhoneNumber\p\g
+join x_ph_unique b on a.EC_PhoneNumber = b.PhoneNumber
+--UTAH
+where a.mrn_1 != b.mrn
+\p\g
 
 drop table x_ph_distinct, x_ph_cnt, x_ph_unique\p\g
 
@@ -112,7 +130,10 @@ create unique index on x_zip_unique(Zipcode)\p\g
 insert into x_cumc_patient_matched
 select distinct a.MRN_1 as empi_or_mrn, a.EC_Relationship as relationship, b.MRN as relation_empi_or_mrn, 'zip'::text as matched_path
 from x_ec_processed a
-join x_zip_unique b on a.EC_Zipcode = b.Zipcode\p\g
+join x_zip_unique b on a.EC_Zipcode = b.Zipcode
+--UTAH
+where a.mrn_1 != b.mrn
+\p\g
 
 drop table x_zip_distinct, x_zip_cnt, x_zip_unique\p\g
 
@@ -135,9 +156,15 @@ where b.cnt = 1 \p\g
 create unique index on x_fn_ln_unique(FirstName, LastName)\p\g
 
 insert into x_cumc_patient_matched
-select distinct a.MRN_1 as empi_or_mrn, a.EC_Relationship as relationship, b.MRN as relation_empi_or_mrn, 'first,last'::text as matched_path
+select distinct a.MRN_1 as empi_or_mrn
+       , a.EC_Relationship as relationship
+       , b.MRN as relation_empi_or_mrn
+       , 'first,last'::text as matched_path
 from x_ec_processed a
-join x_fn_ln_unique b on a.EC_FirstName = b.FirstName and a.EC_LastName = b.LastName\p\g
+join x_fn_ln_unique b on a.EC_FirstName = b.FirstName and a.EC_LastName = b.LastName
+--UTAH
+where a.mrn_1 != b.mrn
+\p\g
 
 drop table x_fn_ln_distinct, x_fn_ln_cnt, x_fn_ln_unique\p\g
 
@@ -162,7 +189,10 @@ create unique index on x_fn_ph_unique(FirstName, PhoneNumber)\p\g
 insert into x_cumc_patient_matched
 select distinct a.MRN_1 as empi_or_mrn, a.EC_Relationship as relationship, b.MRN as relation_empi_or_mrn, 'first,phone'::text as matched_path
 from x_ec_processed a
-join x_fn_ph_unique b on a.EC_FirstName = b.FirstName and a.EC_PhoneNumber = b.PhoneNumber\p\g
+join x_fn_ph_unique b on a.EC_FirstName = b.FirstName and a.EC_PhoneNumber = b.PhoneNumber
+--UTAH
+where a.mrn_1 != b.mrn
+\p\g
 
 drop table x_fn_ph_distinct, x_fn_ph_cnt, x_fn_ph_unique\p\g
 
@@ -187,7 +217,10 @@ create unique index on x_fn_zip_unique(FirstName, Zipcode)\p\g
 insert into x_cumc_patient_matched
 select distinct a.MRN_1 as empi_or_mrn, a.EC_Relationship as relationship, b.MRN as relation_empi_or_mrn, 'first,zip'::text as matched_path
 from x_ec_processed a
-join x_fn_zip_unique b on a.EC_FirstName = b.FirstName and a.EC_Zipcode = b.Zipcode\p\g
+join x_fn_zip_unique b on a.EC_FirstName = b.FirstName and a.EC_Zipcode = b.Zipcode
+--UTAH
+where a.mrn_1 != b.mrn
+\p\g
 
 drop table if exists x_fn_zip_distinct, x_fn_zip_cnt, x_fn_zip_unique\p\g
 
@@ -212,7 +245,10 @@ create unique index on x_ln_ph_unique(LastName, PhoneNumber)\p\g
 insert into x_cumc_patient_matched
 select distinct a.MRN_1 as empi_or_mrn, a.EC_Relationship as relationship, b.MRN as relation_empi_or_mrn, 'last,phone'::text as matched_path
 from x_ec_processed a
-join x_ln_ph_unique b on a.EC_LastName = b.LastName and a.EC_PhoneNumber = b.PhoneNumber\p\g
+join x_ln_ph_unique b on a.EC_LastName = b.LastName and a.EC_PhoneNumber = b.PhoneNumber
+--UTAH
+where a.mrn_1 != b.mrn
+\p\g
 
 drop table x_ln_ph_distinct, x_ln_ph_cnt, x_ln_ph_unique\p\g
 
@@ -237,7 +273,10 @@ create unique index on x_ln_zip_unique(LastName, Zipcode)\p\g
 insert into x_cumc_patient_matched
 select distinct a.MRN_1 as empi_or_mrn, a.EC_Relationship as relationship, b.MRN as relation_empi_or_mrn, 'last,zip'::text as matched_path
 from x_ec_processed a
-join x_ln_zip_unique b on a.EC_LastName = b.LastName and a.EC_Zipcode = b.Zipcode\p\g
+join x_ln_zip_unique b on a.EC_LastName = b.LastName and a.EC_Zipcode = b.Zipcode
+--UTAH
+where a.mrn_1 != b.mrn
+\p\g
 
 drop table x_ln_zip_distinct, x_ln_zip_cnt, x_ln_zip_unique\p\g
 
@@ -262,7 +301,10 @@ create unique index on x_ph_zip_unique(PhoneNumber, Zipcode)\p\g
 insert into x_cumc_patient_matched
 select distinct a.MRN_1 as empi_or_mrn, a.EC_Relationship as relationship, b.MRN as relation_empi_or_mrn, 'phone,zip'::text as matched_path
 from x_ec_processed a
-join x_ph_zip_unique b on a.EC_PhoneNumber = b.PhoneNumber and a.EC_Zipcode = b.Zipcode\p\g
+join x_ph_zip_unique b on a.EC_PhoneNumber = b.PhoneNumber and a.EC_Zipcode = b.Zipcode
+--UTAH
+where a.mrn_1 != b.mrn
+\p\g
 
 drop table if exists x_ph_zip_distinct, x_ph_zip_cnt, x_ph_zip_unique\p\g
 
@@ -294,7 +336,10 @@ select distinct a.MRN_1 as empi_or_mrn
 from x_ec_processed a
 join x_fn_ln_ph_unique b on a.EC_FirstName = b.FirstName 
                          and a.EC_LastName = b.LastName 
-                         and a.EC_PhoneNumber = b.PhoneNumber\p\g
+                         and a.EC_PhoneNumber = b.PhoneNumber
+--UTAH
+where a.mrn_1 != b.mrn
+\p\g
 
 drop table x_fn_ln_ph_distinct, x_fn_ln_ph_cnt, x_fn_ln_ph_unique\p\g
 
@@ -319,7 +364,10 @@ create unique index on x_fn_ln_zip_unique(FirstName, LastName, Zipcode)\p\g
 insert into x_cumc_patient_matched
 select distinct a.MRN_1 as empi_or_mrn, a.EC_Relationship as relationship, b.MRN as relation_empi_or_mrn, 'first,last,zip'::text as matched_path
 from x_ec_processed a
-join x_fn_ln_zip_unique b on a.EC_FirstName = b.FirstName and a.EC_LastName = b.LastName and a.EC_Zipcode = b.Zipcode\p\g
+join x_fn_ln_zip_unique b on a.EC_FirstName = b.FirstName and a.EC_LastName = b.LastName and a.EC_Zipcode = b.Zipcode
+--UTAH
+where a.mrn_1 != b.mrn
+\p\g
 
 drop table x_fn_ln_zip_distinct, x_fn_ln_zip_cnt, x_fn_ln_zip_unique\p\g
 
@@ -337,14 +385,24 @@ create unique index on x_fn_ph_zip_cnt(FirstName, PhoneNumber, Zipcode)\p\g
 create table x_fn_ph_zip_unique as
 select distinct a.MRN, a.FirstName, a.PhoneNumber, a.Zipcode
 from x_pt_processed a
-join x_fn_ph_zip_cnt b on a.FirstName = b.FirstName and a.PhoneNumber = b.PhoneNumber and a.Zipcode = b.Zipcode
+join x_fn_ph_zip_cnt b on a.FirstName = b.FirstName 
+     and a.PhoneNumber = b.PhoneNumber 
+     and a.Zipcode = b.Zipcode
 where b.cnt = 1 \p\g
 create unique index on x_fn_ph_zip_unique(FirstName, PhoneNumber, Zipcode)\p\g
 
 insert into x_cumc_patient_matched
-select distinct a.MRN_1 as empi_or_mrn, a.EC_Relationship as relationship, b.MRN as relation_empi_or_mrn, 'first,phone,zip'::text as matched_path
+select distinct a.MRN_1 as empi_or_mrn
+       , a.EC_Relationship as relationship
+       , b.MRN as relation_empi_or_mrn
+       , 'first,phone,zip'::text as matched_path
 from x_ec_processed a
-join x_fn_ph_zip_unique b on a.EC_FirstName = b.FirstName and a.EC_PhoneNumber = b.PhoneNumber and a.EC_Zipcode = b.Zipcode\p\g
+join x_fn_ph_zip_unique b on a.EC_FirstName = b.FirstName 
+     and a.EC_PhoneNumber = b.PhoneNumber 
+     and a.EC_Zipcode = b.Zipcode
+--UTAH
+where a.mrn_1 != b.mrn
+\p\g
 
 drop table x_fn_ph_zip_distinct, x_fn_ph_zip_cnt, x_fn_ph_zip_unique\p\g
 
@@ -369,7 +427,10 @@ create unique index on x_ln_ph_zip_unique(LastName, PhoneNumber, Zipcode)\p\g
 insert into x_cumc_patient_matched
 select distinct a.MRN_1 as empi_or_mrn, a.EC_Relationship as relationship, b.MRN as relation_empi_or_mrn, 'last,phone,zip'::text matched_path
 from x_ec_processed a
-join x_ln_ph_zip_unique b on a.EC_LastName = b.LastName and a.EC_PhoneNumber = b.PhoneNumber and a.EC_Zipcode = b.Zipcode\p\g
+join x_ln_ph_zip_unique b on a.EC_LastName = b.LastName and a.EC_PhoneNumber = b.PhoneNumber and a.EC_Zipcode = b.Zipcode
+--UTAH
+where a.mrn_1 != b.mrn
+\p\g
 
 drop table x_ln_ph_zip_distinct, x_ln_ph_zip_cnt, x_ln_ph_zip_unique\p\g
 
@@ -394,7 +455,42 @@ create unique index on x_fn_ln_ph_zip_unique(FirstName, LastName, PhoneNumber, Z
 insert into x_cumc_patient_matched
 select distinct a.MRN_1 as empi_or_mrn, a.EC_Relationship as relationship, b.MRN as relation_empi_or_mrn, 'first,last,phone,zip'::text as matched_path
 from x_ec_processed a
-join x_fn_ln_ph_zip_unique b on a.EC_FirstName = b.FirstName and a.EC_LastName = b.LastName and a.EC_PhoneNumber = b.PhoneNumber and a.EC_Zipcode = b.Zipcode\p\g
+join x_fn_ln_ph_zip_unique b on a.EC_FirstName = b.FirstName and a.EC_LastName = b.LastName and a.EC_PhoneNumber = b.PhoneNumber and a.EC_Zipcode = b.Zipcode
+--UTAH
+where a.mrn_1 != b.mrn
+\p\g
 
 drop table if exists x_fn_ln_ph_zip_distinct, x_fn_ln_ph_zip_cnt, x_fn_ln_ph_zip_unique\p\g
 
+/* UTAH: */
+select count(*) as total_found_relations from x_cumc_patient_matched
+\p\g
+
+with urel as (
+select empi_or_mrn, relation_empi_or_mrn, relationship, count(*) as unique_pairing
+from x_cumc_patient_matched
+group by empi_or_mrn, relation_empi_or_mrn, relationship
+)
+select count(case when unique_pairing = 1 then true end) as x1,
+       count(case when unique_pairing = 2 then true end) as x2,
+       count(case when unique_pairing = 3 then true end) as x3,
+       count(case when unique_pairing = 4 then true end) as x4,
+       count(case when unique_pairing = 5 then true end) as x5,
+       count(case when unique_pairing = 6 then true end) as x6,
+       count(case when unique_pairing = 7 then true end) as x7,
+       count(case when unique_pairing = 8 then true end) as x8,
+       count(case when unique_pairing = 9 then true end) as x9,
+       count(case when unique_pairing = 10 then true end) as x10,
+       count(case when unique_pairing = 11 then true end) as x11,
+       count(case when unique_pairing = 12 then true end) as x12,
+       count(case when unique_pairing = 13 then true end) as x13,
+       count(case when unique_pairing >= 14 then true end) as many
+from urel
+\p\g
+
+
+/* UTAH: relationship type historgram after Step Zero*/
+select relationship, count(*) n from x_cumc_patient_matched 
+group by relationship 
+order by relationship
+\p\g
