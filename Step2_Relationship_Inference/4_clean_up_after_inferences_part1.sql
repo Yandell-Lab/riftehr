@@ -50,7 +50,7 @@ having count(relationship)>1\p\g
 --### Tagging conflicting provided relationships
 */
 
-drop table  provided_relationships_conflicting\p\g
+drop table provided_relationships_conflicting\p\g
 create table provided_relationships_conflicting as
 select mrn, relation_mrn, array_agg(relationship order by relationship ) as ships
 from actual_and_inf_rel_part1_unique_clean a
