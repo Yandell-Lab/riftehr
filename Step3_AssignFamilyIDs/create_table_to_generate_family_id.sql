@@ -1,6 +1,5 @@
 -- ### Create table to identify families
-drop table if exists all_relationships_to_generate_family_id
-\p\g
+drop table if exists all_relationships_to_generate_family_id\p\g
 create table all_relationships_to_generate_family_id as 
 select mrn, relationship, relation_mrn
 --from actual_and_inf_rel_clean_final
