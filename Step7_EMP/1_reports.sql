@@ -1,3 +1,5 @@
+
+
 /* 
  * showing relationships which should not have same-age members
  * could include aunt/uncle in excludes?
@@ -12,12 +14,11 @@ select a.relation,
 from all_relationship_s7 a 
      join pt_demog m on a.mrn = m.mrn
      join pt_demog r on a.relation_mrn = r.mrn
-group by a.relation, direction
+where a.relation in ('Brother', 'Sister', 'Sibling')
+group by a.relation, m.year, r.year
 )
-select * from distro
+select count(*) from distro
 where direction = 'equal' 
-      and relation not in ('Cousin', 'Brother', 'Sister', 'Sibling')
-      and relation !~ '^N.*e'
 \p\g      
 
 /* PARENT out of age range */
@@ -32,3 +33,22 @@ where  a.relation = 'Child'
 group by (r.year - m.year)/5 + 1
 order by years_mod5
 \p\g
+
+/* This is after removing non-genetic relationships
+ * ('Neighbor','Unknown','None Entered','In-Law', 'Friend',
+ * 'Case Worker','Other','Attorney', 'Employee','Legal Guardian')
+ * N = 269986
+ */
+select count(*) from x_ec_processed
+\p\g
+
+/* Post RIFTEHR Relationship type histogram*/
+select relation
+       , count(*) n 
+from all_relationship_s7
+group by relation
+order by relation
+\p\g
+
+
+
