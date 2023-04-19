@@ -17,10 +17,13 @@ where rel.relationship = 'Sibling'
 -- # select siblings with the same DOB 
 select distinct *
 from siblings_with_dob
-where mrn_dob = relation_dob\p\g
+where mrn_dob = relation_dob
+      and relationship != 'Sibling'
+\p\g
 
 -- UT: find sibs without parents or children
 -- UT: in the 100K test suite, zero sibs are parents or children
+
 Siblings with no other connection\p\r
 /* ON HOLD
 select s.* 
