@@ -56,6 +56,8 @@ end
 x = deepcopy(matches_dict)
 #print(x)
 b = 0
+sibgrand = 0
+ccgrand = 0
 while true
     a = 0
     f = 0
@@ -124,6 +126,7 @@ while true
                             if contains("Grandchild", z[2], x[i]) == false
                                 push!(x2[i], ("Grandchild", z[2], b))
                                 a += 1
+                                global ccgrand +=1
                             end    
                         elseif z[1] == "Grandchild"
                             if contains("Great-grandchild", z[2], x[i]) == false
@@ -267,6 +270,7 @@ while true
                             if contains("Grandchild", z[2], x[i]) == false
                                 push!(x2[i], ("Grandchild", z[2], b))
                                 a += 1
+                                global sibgrand += 1
                             end
                         end
                     end
@@ -362,6 +366,10 @@ while true
         break
     end
 end # while
+print("Sib-grandparent: ", sibgrand)
+print("\n")
+print("Child-grandparent: ", ccgrand)
+print("\n")
 
 global outfh = open(datadir * "output_actual_and_inferred_relationships.csv", "w")
 for pid in keys(x)
