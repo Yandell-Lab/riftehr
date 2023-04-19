@@ -554,8 +554,8 @@ CREATE TABLE provided_relationships_conflicting (
 
 
 
+/* see baseDDL.sql for an extention to this table */
 DROP TABLE IF EXISTS pt_demog;
-
 CREATE TABLE pt_demog (
   mrn varchar(20) primary key,
   year int DEFAULT NULL,
@@ -563,8 +563,6 @@ CREATE TABLE pt_demog (
   sex_name varchar(20),
   unique(mrn)
 ); 
-
-
 
 
 -- DROP TABLE IF EXISTS pt_matches;
