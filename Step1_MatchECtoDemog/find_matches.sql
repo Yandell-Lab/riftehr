@@ -22,7 +22,6 @@ create table x_fn_cnt as
 select a.FirstName, count(distinct MRN) as cnt
 from x_fn_distinct a
 group by a.FirstName
-/*having count(distinct MRN) > 1*/
 \p\g
 create unique index xfncnt on x_fn_cnt(firstname)\p\g
 
@@ -107,7 +106,10 @@ join x_ph_unique b on a.EC_PhoneNumber = b.PhoneNumber
 where a.mrn_1 != b.mrn
 \p\g
 
+/*  
+Holding this out to see what's up with unique phone numbers surviving as final, total path
 drop table x_ph_distinct, x_ph_cnt, x_ph_unique\p\g
+*/
 
 -- map Zip
 create table x_zip_distinct as
@@ -187,15 +189,20 @@ where b.cnt = 1 \p\g
 create unique index on x_fn_ph_unique(FirstName, PhoneNumber)\p\g
 
 insert into x_cumc_patient_matched
-select distinct a.MRN_1 as empi_or_mrn, a.EC_Relationship as relationship, b.MRN as relation_empi_or_mrn, 'first,phone'::text as matched_path
+select distinct a.MRN_1 as empi_or_mrn
+                , a.EC_Relationship as relationship
+                , b.MRN as relation_empi_or_mrn
+                , 'first,phone'::text as matched_path
 from x_ec_processed a
 join x_fn_ph_unique b on a.EC_FirstName = b.FirstName and a.EC_PhoneNumber = b.PhoneNumber
---UTAH
+--UTAH: 
 where a.mrn_1 != b.mrn
 \p\g
 
+/*
+Hide this while chasing down "phone" only matched paths
 drop table x_fn_ph_distinct, x_fn_ph_cnt, x_fn_ph_unique\p\g
-
+*/
 -- map FirstName, Zip
 create table x_fn_zip_distinct as
 select distinct MRN, FirstName,Zipcode
