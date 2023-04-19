@@ -38,7 +38,8 @@ for i in range(len(a)):
 u = nx.Graph()  # directed graph
 
 for i in range(len(all_relationships)):
-    u.add_edge(all_relationships[i][0], all_relationships[i][1], rel=all_relationships[i][2])
+    arel = all_relationships[i]
+    u.add_edge(arel[0], arel[1], rel=arel[2])
 
 # Components sorted by size
 ## v2ism: comp = sorted(nx.connected_component_subgraphs(u), key=len, reverse=True)
