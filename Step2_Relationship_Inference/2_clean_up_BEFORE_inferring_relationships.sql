@@ -1,3 +1,6 @@
+-- handy single accesspoint
+create view run.fullpatient as select p.*,d.year,d.sex from x_pt_processed p join pt_demog d on p.mrn = d.mrn;
+
 -- ###Flip and clean up step
 -- # Create table to be updated 
 
@@ -38,11 +41,6 @@ join pt_demog parent on parent.mrn = a.relation_mrn
 
 #### exclude patients with conflicting year of birth
 \p\r
-
-/* WTF: 
- * does nothing, extraordinarily complex and done again later in "Parent" and "Child" stanza below
- */
-
 update relations_matched_mrn_with_age_dif a
 set exclude = 1, reason = 'parental age'
 from ( select distinct t1.mrn, t1.relation_mrn, count(t1.age_dif) as cnt
@@ -63,7 +61,7 @@ set exclude = 1, reason = 'mrn = relation_mrn'
 where a.mrn = a.relation_mrn
 \p\g
 
-/* # exclude PARENTS with age difference BETWEEN -10 AND 10 years*/
+/* # exclude PARENTS with age difference BETWEEN -10 AND 10 years */
 update relations_matched_mrn_with_age_dif a
 set exclude = 1, reason = 'parental age less the 11'
 where a.relationship_group = 'Parent' and abs(a.age_dif) < 11
@@ -72,7 +70,7 @@ where a.relationship_group = 'Parent' and abs(a.age_dif) < 11
 /*-- # exclude GRANDPARENTS with age difference BETWEEN -20 AND 20 years*/
 update relations_matched_mrn_with_age_dif a
 set exclude = 1, reason = 'grandparental age < 21'
-where a.relationship_group = 'Grandparent' and abs(a.age_dif) < 21\
+where a.relationship_group = 'Grandparent' and abs(a.age_dif) < 21
 \p\g
 
 /*-- # exclude CHILD with age difference BETWEEN -10 AND 10 years*/
@@ -91,12 +89,19 @@ set exclude = 1, reason = 'ancient data'
 where DOB_empi < 1900 or DOB_matched <1900\p\g
 
 /*-- # only consider matches that match on at least 2 items (first name, last name, phone, ZIP code)*/
+select now() as "before removeing singletons"\p\g
 drop table if exists pt_matches_clean\p\g
 create table pt_matches_clean as
-select mrn, relationship, relation_mrn, array_remove(array_remove(matched_path, 'phone'), 'zip') as matched_path
+select mrn, relationship, relation_mrn, 
+       array_remove(array_remove(array_remove(array_remove(matched_path, 'phone'), 'zip'), 'firstname'), 'lastname') as matched_path
 from pt_matches
 where array_length(matched_path,1) > 1
 \p\g
+select now() as "after removing singletons"\p\g
+/* test what's left after removing singletons*/
+select array_length(matched_path,1) as n_links, count(*) as occurs
+from pt_matches_clean
+group by array_length(matched_path,1)\p\g
 
 /*-- # create final table of matched relations*/
 drop table if exists patient_relations_w_opposites\p\g
@@ -186,11 +191,23 @@ join relationship_lookup b on a.relationship = b.relationship_group and a.dob_em
 \p\g
 
 
-/* troublesome children */
-create table troubled_kids as
-select a.relation_mrn as child, a.mrn as par1, b.mrn as par2, a.relationship
+/* UTAH: troublesome children: same sex parents */
+drop table if exists troubled_kids
+\p\g
+create table run.troubled_kids as
+select a.relation_mrn as child
+       , a.mrn as par1
+       , d.sex as p1x
+       , d.year as par1_yr
+       , b.mrn as par2
+       , e.sex as p2x
+       , e.year as par2_yr
+       , a.relationship
 from patient_relations_w_opposites_clean a 
-     join patient_relations_w_opposites_clean b on a.relation_mrn =b.relation_mrn and a.mrn > b.mrn and a.relationship = b.relationship
-     join pt_demog d on a.mrn = d.mrn join pt_demog e on b.mrn = e.mrn and d.sex = e.sex
+     join patient_relations_w_opposites_clean b on a.relation_mrn = b.relation_mrn 
+          and a.mrn > b.mrn 
+          and a.relationship = b.relationship
+     join pt_demog d on a.mrn = d.mrn 
+     join pt_demog e on b.mrn = e.mrn and d.sex = e.sex
 where a.relationship in('Child', 'Mother', 'Father', 'Parent')
 \p\g
