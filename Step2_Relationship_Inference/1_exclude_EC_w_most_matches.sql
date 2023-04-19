@@ -6,7 +6,7 @@ create table pt_matches as
 select x.empi_or_mrn::text as mrn,
        x.relationship,
        x.relation_empi_or_mrn::text as relation_mrn,
-       array_agg(x.matched_path) as matched_path
+       array_agg(x.matched_path order by x.matched_path) as matched_path
 from x_cumc_patient_matched x
 group by mrn, relation_mrn, relationship
 \p\g
