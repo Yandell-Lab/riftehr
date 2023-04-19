@@ -88,6 +88,7 @@ from provided_relationships_conflicting b
 where (a.mrn = b. mrn) and (a.relation_mrn = b.relation_mrn) and provided_relationship = 1
 \p\g
 
+
 -- ### Create new column relationship_specific at actual_and_inf_rel_part2_unique_clean
 
 -- ### Identifying and updating PROVIDED mothers for not conflicting cases
@@ -109,6 +110,28 @@ set relationship_specific = case when d.sex = 'F' and x.relationship = 'Parent' 
 from pt_demog d
 where x.relationship_specific is null 
       and x.mrn = d.mrn
+\p\g
+
+-- UT
+
+-- Now we try the Child Niece/Nephew relations, but this risks
+-- confusing which side of the relationship is which.  We believe the
+-- relationships are ordered such that mrn is not younger than
+-- relation_mrn (which doesn't hold in previous sql)
+
+update actual_and_inf_rel_part2_unique_clean x
+set relationship_specific = case when d.sex = 'F' and x.relationship = 'Child'        then 'Mother'
+                                 when d.sex = 'F' and x.relationship = 'Nephew/Niece' then 'Aunt'
+                                 when d.sex = 'M' and x.relationship = 'Child'        then 'Father'
+                                 when d.sex = 'M' and x.relationship = 'Nephew/Niece' then 'Uncle'
+                            end
+from pt_demog d
+where x.relationship_specific is null 
+      and x.mrn = d.mrn
+\p\g
+
+-- UT: count specific type just loaded
+select relationship_specific, count(*) as tally from actual_and_inf_rel_part2_unique_clean group by relationship_specific
 \p\g
 
 delete from actual_and_inf_rel_part2_unique_clean where relationship = 'Parent/Aunt/Uncle'\p\g
@@ -134,7 +157,8 @@ delete from actual_and_inf_rel_part2_unique_clean where relationship ~* 'in-law'
 
 /*-- ### Creating final table */
 drop table if exists actual_and_inf_rel_clean_final\p\g
-create table actual_and_inf_rel_clean_final as
+create table actual_and_inf_rel_clean_final
+as
 select distinct mrn
                 , relationship
                 , relation_mrn
@@ -153,79 +177,6 @@ from actual_and_inf_rel_part2_unique_clean a
 join relationships_and_opposites b on a.relationship = b.relationship
 \p\g
 
-create index on actual_and_inf_rel_part2_unique_clean(mrn)\p\g
-create index on actual_and_inf_rel_part2_unique_clean(relation_mrn)\p\g
-
-/* Testing.  Maybe move this to Step2/7_ */
-
-/* 1: grandparents not parents nor spouses */
-select a.relation_mrn, d.sex 
-from actual_and_inf_rel_part2_unique_clean a
-     join pt_demog d on a.relation_mrn = d.mrn
-where a.relationship = 'Grandparent'
-      and not exists(select 1 from actual_and_inf_rel_part2_unique_clean b 
-                     where a.relation_mrn = b.relation_mrn and b.relationship in ( 'Parent', 'Spouse'))
-\p\g                     
-                     
-
-/* 1.b with derivatives*/
-select a.relation_mrn as grand, a.relationship, a.mrn as g2, d.sex, b.relationship, b.mrn 
-from actual_and_inf_rel_part2_unique_clean a
-     join pt_demog d on a.relation_mrn = d.mrn
-     join actual_and_inf_rel_part2_unique_clean b on b.relation_mrn = d.mrn
-where a.relationship = 'Grandparent'
-      and b.relationship in ( 'Parent', 'Spouse')\p\g
-
-/*
- * DANGER, DANGER, DANGER
- */
-/*2: the Parent is right to left, the Child is left to right\p\g Unify that (right to left) */
-drop table if exists forward_rtl\p\g
-create table forward_rtl as 
-select mrn, relationship, relation_mrn 
-from actual_and_inf_rel_part2_unique_clean 
-where relationship != 'Child'
-\p\g
-insert into forward_rtl (mrn, relationship, relation_mrn) 
-select relation_mrn, 'Parent', mrn 
-from actual_and_inf_rel_part2_unique_clean 
-where relationship = 'Child'
-\p\g
-delete from forward_rtl where relationship = 'Grandchild'
-\p\g
-
-/* 2.a two grandparents one child*/
-select g.*
-from forward_rtl f
-join forward_rtl g on f.mrn = g.mrn and f.relation_mrn != g.relation_mrn
-where f.relationship = 'Grandparent' and g.relationship = 'Grandparent'
-\p\g
--- zero rows
-
-/* 2.b two parents one child */
-drop table if exists prime_emp;
-create table prime_emp as 
-select distinct f.mrn as child, f.relation_mrn as mom, g.relation_mrn as dad
-from forward_rtl f
-join pt_demog fd on f.relation_mrn = fd.mrn
-join forward_rtl g on f.mrn = g.mrn and f.relation_mrn != g.relation_mrn
-join pt_demog gd on g.relation_mrn = gd.mrn
-where gd.sex = 'M' and fd.sex ='F'
-\p\g
-select count(*) from prime_emp
-\p\g
-
-/* 2.c single parents */
-drop table if exists single_parent\p\g
-create table single_parent as
-select f.*, d.sex
-from forward_rtl f
-join pt_demog d on f.relation_mrn = d.mrn
-where relationship = 'Parent'
-      and not exists (select 1 from forward_rtl g where g.mrn = f.mrn and g.relation_mrn != f.relation_mrn)
-\p\g      
-select count(*) from single_parent
-\p\g
 
 /* PAYLOAD generated in runSteps.sh*/
 
