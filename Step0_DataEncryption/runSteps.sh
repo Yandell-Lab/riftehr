@@ -10,9 +10,6 @@ then
     exit 2
 fi
 
-ml julia/1.7
-ml gcc/4.8.5
-
 function stager() {
     local stp=$1
     local msg=$2
@@ -69,11 +66,12 @@ then
 \timing on
 set search_path = cell, run, public;
 \i $STEPDIR/1_exclude_EC_w_most_matches.sql
+Step 2.2\p\r
 \i $STEPDIR/2_clean_up_BEFORE_inferring_relationships.sql
 \copy patient_relations_w_opposites_clean to $DATADIR/patient_relations_w_opposites_clean.csv csv header
 EOF
 fi
-
+## patient_relations_w_opposites_clean.csv
 if [[ -z $STARTSTEP || $STARTSTEP == "2.3" ]]
 then
     unset STARTSTEP
@@ -85,7 +83,7 @@ fi
 if [[ -z $STARTSTEP || $STARTSTEP == "2.4" ]]
 then
     unset STARTSTEP
-    stager 2.4 "clean-up post julia"
+    stager 2.4 "post julia1: import output_actual_and_inferred_relationships.csv, export patient_relations_w_opposites_part2.csv"
     psql --user cell --dbname $DBNAME --host csgsdb <<EOF
 \timing on
 set search_path = cell, run, public;
@@ -98,8 +96,8 @@ fi
 if [[ -z $STARTSTEP || $STARTSTEP == "2.5" ]]
 then
     unset STARTSTEP
-    stager 2.5  "families (julia)"
-    julia $STEPDIR/5_Infer_Relationships_part2.jl $DATADIR
+    stager 2.5  "families (julia) import patient_relations_w_opposites_part2.csv, export output_patient_relations_w_opposites_part2.csv"
+    time julia $STEPDIR/5_Infer_Relationships_part2.jl $DATADIR
 fi
 
 
