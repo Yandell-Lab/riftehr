@@ -2,12 +2,16 @@
 --   should be preprocessed by the split_names_combine.py script, and
 --   input as x_ec_processed and x_pt_processed
 
+select count(distinct p.mrn) as pre_clean_n from x_ec_processed e join x_pt_processed p on e.mrn_1 = p.mrn
+\p\g
 /* Brutal, I know*/
 delete from x_ec_processed x
 where ec_relationship in ('Neighbor','Unknown','None Entered','In-Law'
                           ,'Friend','Case Worker','Other','Attorney'
                           ,'Employee','Legal Guardian')
       or ec_relationship is null
+\p\g
+select count(distinct p.mrn) as post_clean_n from x_ec_processed e join x_pt_processed p on e.mrn_1 = p.mrn
 \p\g
 
 create unique index on x_pt_processed(mrn)
@@ -130,7 +134,10 @@ where b.cnt = 1 \p\g
 create unique index on x_zip_unique(Zipcode)\p\g
 
 insert into x_cumc_patient_matched
-select distinct a.MRN_1 as empi_or_mrn, a.EC_Relationship as relationship, b.MRN as relation_empi_or_mrn, 'zip'::text as matched_path
+select distinct a.MRN_1 as empi_or_mrn
+       , a.EC_Relationship as relationship
+       , b.MRN as relation_empi_or_mrn
+       , 'zip'::text as matched_path
 from x_ec_processed a
 join x_zip_unique b on a.EC_Zipcode = b.Zipcode
 --UTAH
