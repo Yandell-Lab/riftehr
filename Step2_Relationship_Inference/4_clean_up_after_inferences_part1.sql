@@ -1,5 +1,7 @@
 --### Having imported output_actual_and_inferred_relationships.csv into database as actual_and_inf_rel_part1
 
+select infer, count(*) from  actual_and_inf_rel_part1 group by infer
+\p\g
 --### Creating table with unique pairs and relationships
 drop table if exists actual_and_inf_rel_part1_unique\p\g
 create table actual_and_inf_rel_part1_unique as
@@ -386,6 +388,9 @@ delete from actual_and_inf_rel_part1_unique_clean a
 using delete_part1_sibling_in_law_cases b
 where (a.mrn = b.mrn) and (a.relation_mrn = b.relation_mrn) and (a.relationship = b.relationship)\p\g
 
+--### Table 1 ref
+select provided_relationship, count(*) from actual_and_inf_rel_part1_unique_clean group by provided_relationship
+\p\g
 
 
 --### Creating table to run new script
