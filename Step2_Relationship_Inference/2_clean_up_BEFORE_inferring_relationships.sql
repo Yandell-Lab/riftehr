@@ -93,7 +93,7 @@ select now() as "before removeing singletons"\p\g
 drop table if exists pt_matches_clean\p\g
 create table pt_matches_clean as
 select mrn, relationship, relation_mrn, 
-       array_remove(array_remove(array_remove(array_remove(matched_path, 'phone'), 'zip'), 'firstname'), 'lastname') as matched_path
+       array_remove(array_remove(array_remove(array_remove(matched_path, 'phone'), 'zip'), 'first'), 'last') as matched_path
 from pt_matches
 where array_length(matched_path,1) > 1
 \p\g
@@ -176,14 +176,16 @@ from relations_matched_mrn_fixed_flipped_rel b
 -- # Creating patient_relations_w_opposites_clean
 /* the affect is to have the elder person in mrn slot, younger in relation_mrn 
  * and rename relationship to match.
+ * NOTA BENE: Original code does not make use of the birthyear garnered above.  WE DO
  * 
+ * NOTA BENE: no longer true
  * This is also the point at which we're down to id-relation-id.  All (else) is lost 
  */
 drop table if exists patient_relations_w_opposites_clean
 \p\g
 create table patient_relations_w_opposites_clean as 
 select distinct mrn, relationship, relation_mrn
-from relations_matched_clean where dob_empi <= dob_matched
+from relations_matched_clean -- where dob_empi <= dob_matched
 union
 select distinct a.relation_mrn as mrn, b.opposite_relationship_group as relationship, a.mrn as relation_mrn
 from relations_matched_clean a
