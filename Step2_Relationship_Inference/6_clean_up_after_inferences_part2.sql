@@ -57,6 +57,11 @@ from actual_and_inf_rel_part2_unique a
      join actual_and_inf_rel_part2_unique b on a.mrn = b.mrn 
           and a.relation_mrn = b.relation_mrn and a.relationship < b.relationship
 \p\g
+select relationship, duprel, count(*) 
+from reltype_duplicate_ut 
+group by relationship, duprel 
+order by count(*) desc
+\p\g
 
 delete from actual_and_inf_rel_part2_unique a
 using reltype_duplicate_ut r
@@ -127,6 +132,7 @@ set relationship_specific = case when d.sex = 'F' and x.relationship = 'Child'  
                             end
 from pt_demog d
 where x.relationship_specific is null 
+      and x.conflicting_provided_relationship is null
       and x.mrn = d.mrn
 \p\g
 
