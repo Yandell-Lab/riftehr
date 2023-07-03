@@ -1,6 +1,3 @@
-/* #-- #-- # Evaluation of maternal relationships using the mother-baby linkage from EHR*/
-/* #-- # Overall performance query for relationship = mother*/
-
 /***
         UTAH: no supplied definition of mother_child_linkage.  I edited the header line of
         the input data to match column names in the RIFTEHR Step6 SQL
@@ -35,7 +32,6 @@ delete from mother_child_linkage where child_mrn in ('590788','2441891','2425683
 \p\g
 
 /* 
-
 We delete four nativity records which are contradicted by contact information to avoid
 having to use 'Mother' relationship.  These are the only four nativity records which
 didn't have 'Mother' as specific relationship value.  All where 'Aunt's.
@@ -43,7 +39,8 @@ didn't have 'Mother' as specific relationship value.  All where 'Aunt's.
 delete from mother_child_linkage where mother_mrn in ('3189002','1494956','2512154','2951334')
 \p\g
 
-
+/* #-- #-- # Evaluation of maternal relationships using the mother-baby linkage from EHR*/
+/* #-- # Overall performance query for relationship = mother*/
 
 select count(*) as total_mother_child_n from mother_child_linkage
 \p\g
@@ -84,8 +81,6 @@ select count(*) as fn
 order by "ppv: tp/(tp+fp)" desc
 \p\g
 
-
-
 /* #-- #-- # Create table to include matched path*/
 
 -- drop table if exists actual_and_inf_rel_clean_final_w_matched_path\p\g
@@ -99,7 +94,7 @@ order by "ppv: tp/(tp+fp)" desc
 -- # False Negatives (FN) - zero since there is no match, zero paths therefore we are calculationg only PPV
 
 select *, tp/(tp+fp) as ppv
-from
+from   
 (
 	/* # True Positives (TP)*/
 	select npath, count(*) as tp
@@ -136,6 +131,7 @@ order by ppv desc\p\g
 -- select *, tp/(tp+fn) as sensitivity, tp/(tp+fp) as ppv 
 drop table if exists run.path_sensitivity
 \p\g
+
 create table run.path_sensitivity
 as
 select distinct tp.singlepath, tp.tp, fp.fp, fn.fn,
