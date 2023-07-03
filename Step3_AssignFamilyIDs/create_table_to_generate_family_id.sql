@@ -1,9 +1,18 @@
 -- ### Create table to identify families
+/* Starting material */
+
+select count(*) "Total Rels pre family" from actual_and_inf_rel_clean_final
+\p\g
+select count(*) "Total MRN pre family"
+from (select mrn from actual_and_inf_rel_clean_final 
+      union 
+      select relation_mrn from actual_and_inf_rel_clean_final) a 
+\p\g
+
 drop table if exists all_relationships_to_generate_family_id\p\g
 create table all_relationships_to_generate_family_id as 
 select mrn, relationship, relation_mrn
---from actual_and_inf_rel_clean_final
-from actual_and_inf_rel_part2_unique_clean
+from actual_and_inf_rel_clean_final
 where relationship != 'Spouse' 
       and relationship != 'Child-in-law' 
       and relationship != 'Parent-in-law'
